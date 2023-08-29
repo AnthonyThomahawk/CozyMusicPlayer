@@ -6,7 +6,7 @@ class ListItemData(
     private var fileName: String?,
     private var trackTitle: String?,
     private var trackArtist: String?,
-    private var trackURI: Uri
+    private var trackIndex: Int
 ) {
 
     fun getFileName() : String? {
@@ -21,7 +21,7 @@ class ListItemData(
         return trackArtist
     }
 
-    fun getTrackUri() : Uri {
-        return trackURI
+    fun getTrackIndex() : Int {
+        return trackIndex
     }
 }
