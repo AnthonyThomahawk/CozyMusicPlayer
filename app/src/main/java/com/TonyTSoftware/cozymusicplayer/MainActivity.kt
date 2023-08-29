@@ -1,12 +1,14 @@
 package com.TonyTSoftware.cozymusicplayer
 
 import android.content.Intent
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 
 
 class MainActivity : AppCompatActivity() {
@@ -24,23 +26,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun refreshTextView() {
-        val textView : TextView = findViewById(R.id.textView)
-        textView.text = "Music files currently loaded : \n"
-        var i = 1
-        for (audioFile in audioFilesUri) {
-            val audioFiledoc : DocumentFile? = DocumentFile.fromSingleUri(this, audioFile)
-            val filename = audioFiledoc?.name
-            textView.text = textView.text as String + i.toString() + ")" + filename + "\n"
-            i++
-
-            // below code returns null if no metadata exists, will keep this for later
-//            val metaDataRetriever = MediaMetadataRetriever()
-//            metaDataRetriever.setDataSource(this, audioFile)
-//            val artist : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-//            val title : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-
+    private fun refreshUI() {
+        val trackList : ArrayList<ListItemData> = ArrayList()
+        for (audioFileUri in audioFilesUri) {
+            val audioFileDoc : DocumentFile? = DocumentFile.fromSingleUri(this, audioFileUri)
+            val filename = audioFileDoc?.name
+            val metaDataRetriever = MediaMetadataRetriever()
+            metaDataRetriever.setDataSource(this, audioFileUri)
+            val artist : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+            val title : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+            trackList.add(ListItemData(filename, title, artist, audioFileUri))
         }
+        val recyclerView : RecyclerView = findViewById(R.id.recyclerView)
+        val trackListAdapter = TrackListAdapter(trackList)
+        recyclerView.setHasFixedSize(true)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = trackListAdapter
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -49,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         if (resultCode == RESULT_OK && requestCode == folderPickRequestCode) {
             val selectedFolderUri = data?.data
             if (selectedFolderUri != null) {
-                val selectedFolder : DocumentFile? = DocumentFile.fromTreeUri(this, selectedFolderUri!!)
+                val selectedFolder : DocumentFile? = DocumentFile.fromTreeUri(this, selectedFolderUri)
                 val filesInFolder = selectedFolder?.listFiles()
                 if (filesInFolder != null)
                     for (file in filesInFolder)
@@ -58,7 +59,7 @@ class MainActivity : AppCompatActivity() {
                             if (fileExtension == "mp3" || fileExtension == "ogg" || fileExtension == "flac")
                                 audioFilesUri.add(file.uri)
                         }
-                refreshTextView()
+                refreshUI()
             }
         }
     }
