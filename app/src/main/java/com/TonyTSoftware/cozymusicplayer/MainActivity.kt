@@ -42,7 +42,6 @@ class MainActivity : AppCompatActivity() {
 
     companion object { // a bit non optimal, will change this later
         lateinit var mainActivityPtr : MainActivity
-        lateinit var mainActivityCont : Context
     }
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,7 +49,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         mainActivityPtr = this
-        mainActivityCont = this
 
         musicPlayer = MusicPlayer()
         currentTrackView = findViewById(R.id.textView3)
@@ -107,6 +105,9 @@ class MainActivity : AppCompatActivity() {
         autoPlaySwitch.setOnClickListener {
             musicPlayer.autoPlay = autoPlaySwitch.isChecked
         }
+
+
+
 
         shuffleSwitch.setOnClickListener {
             if (shuffleSwitch.isChecked) {
@@ -281,23 +282,26 @@ class MainActivity : AppCompatActivity() {
         tracksLoadedView.text = trackListAdapter.itemCount.toString() + " tracks loaded"
     }
 
+    private fun scanFolderUri(selectedFolderUri : Uri?) {
+        if (selectedFolderUri != null) {
+            val selectedFolder : DocumentFile? = DocumentFile.fromTreeUri(this, selectedFolderUri)
+            val filesInFolder = selectedFolder?.listFiles()
+            if (filesInFolder != null)
+                for (file in filesInFolder)
+                    if (file.isFile) {
+                        val musicFileExtensions = arrayOf("mp3", "ogg", "flac", "m4a", "3gp", "wav")
+                        val fileExtension = file.name?.substringAfterLast('.', "")
+                        if (fileExtension in musicFileExtensions && file.uri !in audioFilesUri)
+                            audioFilesUri.add(file.uri)
+                    }
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == RESULT_OK && requestCode == folderPickRequestCode) {
-            val selectedFolderUri = data?.data
-            if (selectedFolderUri != null) {
-                val selectedFolder : DocumentFile? = DocumentFile.fromTreeUri(this, selectedFolderUri)
-                val filesInFolder = selectedFolder?.listFiles()
-                if (filesInFolder != null)
-                    for (file in filesInFolder)
-                        if (file.isFile) {
-                            val musicFileExtensions = arrayOf("mp3", "ogg", "flac", "m4a", "3gp", "wav")
-                            val fileExtension = file.name?.substringAfterLast('.', "")
-                            if (fileExtension in musicFileExtensions && file.uri !in audioFilesUri)
-                                audioFilesUri.add(file.uri)
-                        }
-                refreshUI()
-            }
+            scanFolderUri(data?.data)
+            refreshUI()
         }
     }
 
