@@ -4,11 +4,13 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
+import kotlin.properties.Delegates
 
 class MusicPlayer {
     private var mediaPlayer : MediaPlayer? = null
     private var selectedTrack : Uri? = null
     private var wasPlaying : Boolean = false
+    var autoPlay by Delegates.notNull<Boolean>()
 
     fun getMetaData(context: Context,trackUri : Uri) : Triple<String?,String?, String?> {
         val metaDataRetriever = MediaMetadataRetriever()
@@ -42,7 +44,8 @@ class MusicPlayer {
             false
     }
     fun changeTrack(context : Context, trackUri : Uri?) {
-        if (mediaPlayer != null && isPlaying()) {
+        wasPlaying = false
+        if (mediaPlayer != null && (isPlaying() || autoPlay)) {
             stop()
             wasPlaying = true
         }
@@ -52,6 +55,11 @@ class MusicPlayer {
             mediaPlayer?.setDataSource(context, selectedTrack!!)
         }
         mediaPlayer?.prepare()
+        if (autoPlay){
+            mediaPlayer!!.setOnCompletionListener {
+                MainActivity.mainActivityPtr.nextTrack()
+            }
+        }
         if (wasPlaying) {
             play()
         }

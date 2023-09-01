@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Button
 import android.widget.SeekBar
+import android.widget.Switch
 import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -35,6 +36,9 @@ class MainActivity : AppCompatActivity() {
     private var seekBarThreadRunning : Boolean = false
     private var seekBarisHeld : Boolean = false
     private lateinit var timeView : TextView
+    private lateinit var autoPlaySwitch : Switch
+    private lateinit var shuffleSwitch : Switch
+    private var shuffle : Boolean = false
 
     companion object { // a bit non optimal, will change this later
         lateinit var mainActivityPtr : MainActivity
@@ -56,12 +60,12 @@ class MainActivity : AppCompatActivity() {
         nextBtn = findViewById(R.id.nextBtn)
         seekBar = findViewById(R.id.seekBar)
         timeView = findViewById(R.id.timeView)
+        autoPlaySwitch = findViewById(R.id.switch1)
+        shuffleSwitch = findViewById(R.id.switch2)
 
         seekBar.max = 1
         seekBar.progress = 0
         seekBar.isEnabled = false
-
-        val test = this.theme
 
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener{
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
@@ -96,6 +100,25 @@ class MainActivity : AppCompatActivity() {
 
         nextBtn.setOnClickListener {
             nextTrack()
+        }
+
+        musicPlayer.autoPlay = autoPlaySwitch.isChecked
+
+        autoPlaySwitch.setOnClickListener {
+            musicPlayer.autoPlay = autoPlaySwitch.isChecked
+        }
+
+        shuffleSwitch.setOnClickListener {
+            if (shuffleSwitch.isChecked) {
+                musicPlayer.autoPlay = true
+                autoPlaySwitch.isEnabled = false
+                autoPlaySwitch.isChecked = true
+                shuffle = true
+            }
+            else {
+                autoPlaySwitch.isEnabled = true
+                shuffle = false
+            }
         }
 
         val selectFolderBtn : Button = findViewById(R.id.selectfolderbtn)
@@ -214,7 +237,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun nextTrack() {
+    fun nextTrack() {
+        if (shuffle) {
+            currentTrackIndex = (0..<audioFilesUri.size).shuffled().last()
+            selectTrack(currentTrackIndex!!)
+            return
+        }
         if (currentTrackIndex != -1) {
             currentTrackIndex = if (currentTrackIndex == audioFilesUri.size - 1)
                 0
@@ -224,7 +252,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun prevTrack() {
+    fun prevTrack() {
         if (currentTrackIndex != -1) {
             currentTrackIndex = if (currentTrackIndex == 0)
                 audioFilesUri.size - 1
