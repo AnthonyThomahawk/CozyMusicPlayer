@@ -1,12 +1,15 @@
 package com.TonyTSoftware.cozymusicplayer
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
-import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Button
+import android.widget.SeekBar
 import android.widget.TextView
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
@@ -21,23 +24,63 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tracksLoadedView : TextView
     private lateinit var playbackBtn : Button
     private lateinit var stopBtn : Button
+    private lateinit var prevBtn : Button
+    private lateinit var nextBtn : Button
     private lateinit var currentTrackView: TextView
     private lateinit var musicPlayer: MusicPlayer
     private lateinit var trackList : ArrayList<ListItemData>
+    private var currentTrackIndex : Int? = -1
+    private lateinit var seekBarThread : Thread
+    private lateinit var seekBar : SeekBar
+    private var seekBarThreadRunning : Boolean = false
+    private var seekBarisHeld : Boolean = false
+    private lateinit var timeView : TextView
 
     companion object { // a bit non optimal, will change this later
         lateinit var mainActivityPtr : MainActivity
+        lateinit var mainActivityCont : Context
     }
+    @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         mainActivityPtr = this
+        mainActivityCont = this
 
         musicPlayer = MusicPlayer()
         currentTrackView = findViewById(R.id.textView3)
         playbackBtn = findViewById(R.id.playbackBtn)
         stopBtn = findViewById(R.id.stopBtn)
+        prevBtn = findViewById(R.id.prevBtn)
+        nextBtn = findViewById(R.id.nextBtn)
+        seekBar = findViewById(R.id.seekBar)
+        timeView = findViewById(R.id.timeView)
+
+        seekBar.max = 1
+        seekBar.progress = 0
+        seekBar.isEnabled = false
+
+        val test = this.theme
+
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener{
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                // nothing for now
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar) {
+                if (seekBarThreadRunning) {
+                    seekBarisHeld = true
+                }
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                if (seekBarThreadRunning) {
+                    musicPlayer.setTrackProgress(seekBar.progress)
+                    seekBarisHeld = false
+                }
+            }
+        })
 
         playbackBtn.setOnClickListener {
             toggleMusicPlayback()
@@ -45,6 +88,14 @@ class MainActivity : AppCompatActivity() {
 
         stopBtn.setOnClickListener {
             stopPlayback()
+        }
+
+        prevBtn.setOnClickListener {
+            prevTrack()
+        }
+
+        nextBtn.setOnClickListener {
+            nextTrack()
         }
 
         val selectFolderBtn : Button = findViewById(R.id.selectfolderbtn)
@@ -59,27 +110,90 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun getMetaData(trackUri : Uri) : Triple<String?,String?, String?> {
-        val metaDataRetriever = MediaMetadataRetriever()
-        metaDataRetriever.setDataSource(this, trackUri)
-        val artist : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-        val title : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-        val year : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)
-        return Triple(title,artist, year)
+    private fun getMinutesSecondsString(totalTimeMs : Int) : Pair<String,String>{
+        val totalSeconds = totalTimeMs / 1000
+        val finalMinutes = totalSeconds / 60
+        val finalSeconds = totalSeconds % 60
+
+        val finalMinutesString : String = if (finalMinutes >= 10) finalMinutes.toString() else "0$finalMinutes"
+        val finalSecondsString : String = if (finalSeconds >= 10) finalSeconds.toString() else "0$finalSeconds"
+
+        return Pair(finalMinutesString, finalSecondsString)
     }
 
     @SuppressLint("SetTextI18n")
     fun selectTrack(trackIndex : Int) {
-        musicPlayer.changeTrack(applicationContext, audioFilesUri[trackIndex])
-        val (title, artist) = getMetaData(audioFilesUri[trackIndex])
+        if (seekBarThreadRunning)
+        {
+            seekBarThreadRunning = false
+            seekBarisHeld = false
+        }
+
+        currentTrackIndex = trackIndex
+        musicPlayer.changeTrack(this, audioFilesUri[trackIndex])
+        val (title, artist) = musicPlayer.getMetaData(this, audioFilesUri[trackIndex])
         if (title == null || artist == null)
             currentTrackView.text = trackList[trackIndex].getFileName() + "\n" + "No metadata"
         else
             currentTrackView.text = "Title : $title\nArtist : $artist"
+
+        seekBarThreadRunning = true
+        seekBarisHeld = false
+        seekBar.isEnabled = true
+
+        seekBarThread = Thread {
+
+            while (true) {
+                if (!seekBarThreadRunning)
+                    break
+
+                while (seekBarisHeld) {
+                    val total = musicPlayer.getTrackDuration()
+                    val trackProgress = musicPlayer.getTrackProgress()
+
+                    if (total != -1 && trackProgress != -1) {
+                        val (currentMinutesString, currentSecondsString) = getMinutesSecondsString(trackProgress)
+                        val (finalMinutesString, finalSecondsString) = getMinutesSecondsString(total)
+                        val (seekMinutesString, seekSecondsString) = getMinutesSecondsString(seekBar.progress)
+
+                        runOnUiThread {
+                            timeView.text = "$currentMinutesString:$currentSecondsString / $finalMinutesString:$finalSecondsString  Seeking to ( $seekMinutesString:$seekSecondsString )"
+                        }
+                        Thread.sleep(10)
+                    }
+                }
+
+                val total = musicPlayer.getTrackDuration()
+                val trackProgress = musicPlayer.getTrackProgress()
+
+                if (total != -1 && trackProgress != -1) {
+                    seekBar.max = total
+                    seekBar.progress = trackProgress
+
+                    val (currentMinutesString, currentSecondsString) = getMinutesSecondsString(trackProgress)
+                    val (finalMinutesString, finalSecondsString) = getMinutesSecondsString(total)
+
+                    runOnUiThread {
+                        timeView.text = "$currentMinutesString:$currentSecondsString / $finalMinutesString:$finalSecondsString"
+                    }
+                }
+
+                Thread.sleep(10)
+            }
+        }
+
+        if (!seekBarThread.isAlive)
+            seekBarThread.start()
     }
 
+    @SuppressLint("SetTextI18n")
     private fun stopPlayback() {
         if (!musicPlayer.isStopped()) {
+            seekBarThreadRunning = false
+            seekBar.max = 1
+            seekBar.progress = 0
+            seekBar.isEnabled = false
+            timeView.text = "00:00 / 00:00"
             musicPlayer.stop()
             currentTrackView.text = "No track selected"
             playbackBtn.text = "Play"
@@ -87,6 +201,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun toggleMusicPlayback() {
         if (!musicPlayer.isPlaying() && !musicPlayer.isStopped()) {
             musicPlayer.play()
@@ -99,12 +214,35 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun nextTrack() {
+        if (currentTrackIndex != -1) {
+            currentTrackIndex = if (currentTrackIndex == audioFilesUri.size - 1)
+                0
+            else
+                currentTrackIndex!! + 1
+            selectTrack(currentTrackIndex!!)
+        }
+    }
+
+    private fun prevTrack() {
+        if (currentTrackIndex != -1) {
+            currentTrackIndex = if (currentTrackIndex == 0)
+                audioFilesUri.size - 1
+            else
+                currentTrackIndex!! - 1
+            selectTrack(currentTrackIndex!!)
+        }
+    }
+
+
+
+    @SuppressLint("SetTextI18n")
     private fun refreshUI() {
         trackList = ArrayList()
         for ((index, audioFileUri) in audioFilesUri.withIndex()) {
             val audioFileDoc : DocumentFile? = DocumentFile.fromSingleUri(this, audioFileUri)
             val filename = audioFileDoc?.name
-            val (title, artist) = getMetaData(audioFileUri)
+            val (title, artist) = musicPlayer.getMetaData(this, audioFileUri)
             trackList.add(ListItemData(filename, title, artist, index))
         }
         val recyclerView : RecyclerView = findViewById(R.id.recyclerView)

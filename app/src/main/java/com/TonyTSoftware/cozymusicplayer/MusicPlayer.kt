@@ -1,6 +1,7 @@
 package com.TonyTSoftware.cozymusicplayer
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
 
@@ -9,8 +10,29 @@ class MusicPlayer {
     private var selectedTrack : Uri? = null
     private var wasPlaying : Boolean = false
 
+    fun getMetaData(context: Context,trackUri : Uri) : Triple<String?,String?, String?> {
+        val metaDataRetriever = MediaMetadataRetriever()
+        metaDataRetriever.setDataSource(context, trackUri)
+        val artist : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+        val title : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+        val year : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)
+        return Triple(title,artist,year)
+    }
+
     fun isStopped(): Boolean {
         return (mediaPlayer == null || selectedTrack == null)
+    }
+
+    fun getTrackDuration() : Int {
+        return mediaPlayer?.duration ?: -1
+    }
+
+    fun getTrackProgress() : Int {
+        return mediaPlayer?.currentPosition ?: -1
+    }
+
+    fun setTrackProgress(newProgress : Int) {
+        mediaPlayer?.seekTo(newProgress)
     }
 
     fun isPlaying(): Boolean {

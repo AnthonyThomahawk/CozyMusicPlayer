@@ -19,7 +19,7 @@
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
-        android:layout_width="412dp"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_marginTop="324dp"
         android:scrollbars="vertical"
@@ -45,39 +45,79 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="124dp"
-        android:layout_marginEnd="80dp"
         android:text="Stop"
         app:icon="@android:drawable/checkbox_off_background"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/nextBtn"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/playbackBtn"
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/playbackBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="80dp"
         android:layout_marginTop="124dp"
         android:text="Play"
         app:icon="@android:drawable/ic_media_play"
         app:layout_constraintEnd_toStartOf="@+id/stopBtn"
-        app:layout_constraintHorizontal_bias="0.085"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/prevBtn"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/textView3"
         android:layout_width="match_parent"
-        android:layout_height="51dp"
-        android:layout_marginTop="85dp"
-        android:layout_marginBottom="20dp"
+        android:layout_height="wrap_content"
+        android:paddingTop="10dp"
         android:text="No track selected"
         android:textAlignment="center"
         android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@+id/stopBtn"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout_editor_absoluteX="0dp" />
+
+    <Button
+        android:id="@+id/prevBtn"
+        android:layout_width="52dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="124dp"
+        android:text=""
+        app:icon="@android:drawable/ic_media_previous"
+        app:iconGravity="textEnd"
+        app:iconPadding="-3dp"
+        app:layout_constraintEnd_toStartOf="@+id/playbackBtn"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/nextBtn"
+        android:layout_width="52dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="124dp"
+        android:text=""
+        app:icon="@android:drawable/ic_media_next"
+        app:iconGravity="textEnd"
+        app:iconPadding="-3dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/stopBtn"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <SeekBar
+        android:id="@+id/seekBar"
+        android:layout_width="409dp"
+        android:layout_height="31dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView3" />
+
+    <TextView
+        android:id="@+id/timeView"
+        android:layout_width="match_parent"
+        android:layout_height="23dp"
+        android:paddingLeft="25dp"
+        android:text="00:00 / 00:00"
+        app:layout_constraintTop_toBottomOf="@+id/seekBar"
+        tools:layout_editor_absoluteX="21dp" />
 
     <!--    <TextView-->
     <!--        android:id="@+id/textView"-->

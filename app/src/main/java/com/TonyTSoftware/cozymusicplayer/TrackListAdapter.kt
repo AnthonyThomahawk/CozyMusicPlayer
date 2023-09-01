@@ -1,4 +1,6 @@
 package com.TonyTSoftware.cozymusicplayer
+import android.content.Context
+import android.content.res.Resources
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapter<TrackListAdapter.ViewHolder>(){
     private var trackList : ArrayList<ListItemData> = trackList
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val layoutInflater : LayoutInflater = LayoutInflater.from(parent.context)
+        val layoutInflater : LayoutInflater = LayoutInflater.from(MainActivity.mainActivityCont)
         val listItem : View = layoutInflater.inflate(R.layout.iteminlist, parent, false)
         return ViewHolder(listItem)
     }
