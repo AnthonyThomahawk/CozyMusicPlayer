@@ -1,16 +1,17 @@
 package com.TonyTSoftware.cozymusicplayer
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.widget.Button
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
@@ -28,7 +29,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var prevBtn : Button
     private lateinit var nextBtn : Button
     private lateinit var currentTrackView: TextView
-    private lateinit var musicPlayer: MusicPlayer
     private lateinit var trackList : ArrayList<ListItemData>
     private var currentTrackIndex : Int? = -1
     private lateinit var seekBarThread : Thread
@@ -50,7 +50,6 @@ class MainActivity : AppCompatActivity() {
 
         mainActivityPtr = this
 
-        musicPlayer = MusicPlayer()
         currentTrackView = findViewById(R.id.textView3)
         playbackBtn = findViewById(R.id.playbackBtn)
         stopBtn = findViewById(R.id.stopBtn)
@@ -78,17 +77,53 @@ class MainActivity : AppCompatActivity() {
 
             override fun onStopTrackingTouch(seekBar: SeekBar) {
                 if (seekBarThreadRunning) {
-                    musicPlayer.setTrackProgress(seekBar.progress)
+                    MusicService.musicPlayer.setTrackProgress(seekBar.progress)
                     seekBarisHeld = false
                 }
             }
         })
 
+        val receiver: BroadcastReceiver = object : BroadcastReceiver() {
+            override fun onReceive(cont: Context, i: Intent) {
+                val extras = i.extras
+                if (extras != null) {
+                    if (extras.getString("toggled") != null) {
+                        if (extras.getString("toggled") == "paused") {
+                            playbackBtn.text = "Play"
+                            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(applicationContext, android.R.drawable.ic_media_play)
+                        }
+                        else {
+                            playbackBtn.text = "Pause"
+                            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(applicationContext, android.R.drawable.ic_media_pause)
+                        }
+                    }
+                    if (extras.getBoolean("stop")) {
+                        stopPlayback()
+                    }
+                    if (extras.getString("switch") != null) {
+                        if (extras.getString("switch") == "prev") {
+                            prevTrack()
+                        }
+                        else {
+                            nextTrack()
+                        }
+                    }
+                }
+            }
+        }
+        registerReceiver(receiver, IntentFilter("MusicServiceIntent"))
+
+        if (isMusicServiceRunning()) {
+           // todo
+        }
+
         playbackBtn.setOnClickListener {
+            MusicService.startService(this, "test")
             toggleMusicPlayback()
         }
 
         stopBtn.setOnClickListener {
+            MusicService.stopService(this)
             stopPlayback()
         }
 
@@ -100,18 +135,15 @@ class MainActivity : AppCompatActivity() {
             nextTrack()
         }
 
-        musicPlayer.autoPlay = autoPlaySwitch.isChecked
+        MusicService.musicPlayer.autoPlay = autoPlaySwitch.isChecked
 
         autoPlaySwitch.setOnClickListener {
-            musicPlayer.autoPlay = autoPlaySwitch.isChecked
+            MusicService.musicPlayer.autoPlay = autoPlaySwitch.isChecked
         }
-
-
-
 
         shuffleSwitch.setOnClickListener {
             if (shuffleSwitch.isChecked) {
-                musicPlayer.autoPlay = true
+                MusicService.musicPlayer.autoPlay = true
                 autoPlaySwitch.isEnabled = false
                 autoPlaySwitch.isChecked = true
                 shuffle = true
@@ -154,8 +186,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         currentTrackIndex = trackIndex
-        musicPlayer.changeTrack(this, audioFilesUri[trackIndex])
-        val (title, artist) = musicPlayer.getMetaData(this, audioFilesUri[trackIndex])
+        MusicService.musicPlayer.changeTrack(this, audioFilesUri[trackIndex])
+        val (title, artist) = MusicService.musicPlayer.getMetaData(this, audioFilesUri[trackIndex])
         if (title == null || artist == null)
             currentTrackView.text = trackList[trackIndex].getFileName() + "\n" + "No metadata"
         else
@@ -168,12 +200,18 @@ class MainActivity : AppCompatActivity() {
         seekBarThread = Thread {
 
             while (true) {
-                if (!seekBarThreadRunning)
+                if (!seekBarThreadRunning) {
+                    runOnUiThread {
+                        timeView.text = "00:00 / 00:00"
+                        seekBar.max = 1
+                        seekBar.progress = 0
+                    }
                     break
+                }
 
                 while (seekBarisHeld) {
-                    val total = musicPlayer.getTrackDuration()
-                    val trackProgress = musicPlayer.getTrackProgress()
+                    val total = MusicService.musicPlayer.getTrackDuration()
+                    val trackProgress = MusicService.musicPlayer.getTrackProgress()
 
                     if (total != -1 && trackProgress != -1) {
                         val (currentMinutesString, currentSecondsString) = getMinutesSecondsString(trackProgress)
@@ -187,8 +225,8 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                val total = musicPlayer.getTrackDuration()
-                val trackProgress = musicPlayer.getTrackProgress()
+                val total = MusicService.musicPlayer.getTrackDuration()
+                val trackProgress = MusicService.musicPlayer.getTrackProgress()
 
                 if (total != -1 && trackProgress != -1) {
                     seekBar.max = total
@@ -212,13 +250,10 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetTextI18n")
     private fun stopPlayback() {
-        if (!musicPlayer.isStopped()) {
+        if (!MusicService.musicPlayer.isStopped()) {
             seekBarThreadRunning = false
-            seekBar.max = 1
-            seekBar.progress = 0
             seekBar.isEnabled = false
-            timeView.text = "00:00 / 00:00"
-            musicPlayer.stop()
+            MusicService.musicPlayer.stop()
             currentTrackView.text = "No track selected"
             playbackBtn.text = "Play"
             (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_play)
@@ -227,12 +262,12 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetTextI18n")
     private fun toggleMusicPlayback() {
-        if (!musicPlayer.isPlaying() && !musicPlayer.isStopped()) {
-            musicPlayer.play()
+        if (!MusicService.musicPlayer.isPlaying() && !MusicService.musicPlayer.isStopped()) {
+            MusicService.musicPlayer.play()
             playbackBtn.text = "Pause"
             (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_pause)
         } else {
-            musicPlayer.pause()
+            MusicService.musicPlayer.pause()
             playbackBtn.text = "Play"
             (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_play)
         }
@@ -263,15 +298,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-
     @SuppressLint("SetTextI18n")
     private fun refreshUI() {
         trackList = ArrayList()
         for ((index, audioFileUri) in audioFilesUri.withIndex()) {
             val audioFileDoc : DocumentFile? = DocumentFile.fromSingleUri(this, audioFileUri)
             val filename = audioFileDoc?.name
-            val (title, artist) = musicPlayer.getMetaData(this, audioFileUri)
+            val (title, artist) = MusicService.musicPlayer.getMetaData(this, audioFileUri)
             trackList.add(ListItemData(filename, title, artist, index))
         }
         val recyclerView : RecyclerView = findViewById(R.id.recyclerView)
@@ -304,5 +337,13 @@ class MainActivity : AppCompatActivity() {
             refreshUI()
         }
     }
-
+    private fun isMusicServiceRunning(): Boolean {
+        val manager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        for (service in manager.getRunningServices(Int.MAX_VALUE)) {
+            if (MusicService::class.java.name == service.service.className) {
+                return true
+            }
+        }
+        return false
+    }
 }
