@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var autoPlaySwitch : Switch
     private lateinit var shuffleSwitch : Switch
     private var shuffle : Boolean = false
+    private val PREFS_NAME = "MUSICPLAYER_SETTINGS"
 
     companion object { // a bit non optimal, will change this later
         lateinit var mainActivityPtr : MainActivity
@@ -113,17 +114,36 @@ class MainActivity : AppCompatActivity() {
         }
         registerReceiver(receiver, IntentFilter("MusicServiceIntent"))
 
-        if (isMusicServiceRunning()) {
-           // todo
+        val selectFolderBtn : Button = findViewById(R.id.selectfolderbtn)
+
+        tracksLoadedView = findViewById(R.id.textView2)
+        tracksLoadedView.text = audioFilesUri.size.toString() + " tracks loaded"
+
+        selectFolderBtn.setOnClickListener {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            intent.addCategory(Intent.CATEGORY_DEFAULT)
+            startActivityForResult(Intent.createChooser(intent, "Choose directory"), folderPickRequestCode);
+        }
+
+        val settings = getSharedPreferences(PREFS_NAME, 0)
+        val retrievedPaths = settings.getStringSet("stringUris", null)
+
+        if (retrievedPaths != null) {
+            for (strUri in retrievedPaths) {
+                audioFilesUri.add(Uri.parse(strUri))
+            }
+            refreshUI()
         }
 
         playbackBtn.setOnClickListener {
-            MusicService.startService(this, "test")
+            if (!isMusicServiceRunning())
+                MusicService.startService(this, "test")
             toggleMusicPlayback()
         }
 
         stopBtn.setOnClickListener {
-            MusicService.stopService(this)
+            if (isMusicServiceRunning())
+                MusicService.stopService(this)
             stopPlayback()
         }
 
@@ -154,15 +174,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val selectFolderBtn : Button = findViewById(R.id.selectfolderbtn)
+        if (isMusicServiceRunning()) {
 
-        tracksLoadedView = findViewById(R.id.textView2)
-        tracksLoadedView.text = audioFilesUri.size.toString() + " tracks loaded"
-
-        selectFolderBtn.setOnClickListener {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-            intent.addCategory(Intent.CATEGORY_DEFAULT)
-            startActivityForResult(Intent.createChooser(intent, "Choose directory"), folderPickRequestCode);
         }
     }
 
@@ -334,6 +347,35 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == RESULT_OK && requestCode == folderPickRequestCode) {
             scanFolderUri(data?.data)
+
+            val settings = getSharedPreferences(PREFS_NAME, 0)
+            val editor = settings.edit()
+
+            val retrievedPaths = settings.getStringSet("stringUris", null)
+
+            lateinit var stringUriSet : MutableSet<String>
+            var startIndex = 0
+
+            if (retrievedPaths != null) {
+                stringUriSet = retrievedPaths
+                editor.remove("stringUris")
+            } else {
+                stringUriSet = mutableSetOf(audioFilesUri[0].toString())
+                startIndex = 1
+            }
+
+            for (i in startIndex..<audioFilesUri.size) {
+                val uri = audioFilesUri[i]
+                val uriStr = uri.toString()
+                if (uriStr !in stringUriSet) {
+                    stringUriSet.add(uriStr)
+                }
+            }
+
+            editor.putStringSet("stringUris", stringUriSet)
+
+            editor.commit()
+
             refreshUI()
         }
     }

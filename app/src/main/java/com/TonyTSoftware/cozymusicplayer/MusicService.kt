@@ -117,7 +117,7 @@ class MusicService : Service(){
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val serviceChannel = NotificationChannel(NOTIFICATION_CHANNEL, "MP Channel",
+            val serviceChannel = NotificationChannel(NOTIFICATION_CHANNEL, "MEDIAPLAYER_CHANNEL",
                 NotificationManager.IMPORTANCE_LOW)
             val manager = getSystemService(NotificationManager::class.java)
             manager!!.createNotificationChannel(serviceChannel)
