@@ -20,6 +20,7 @@ class MusicService : Service(){
     private val NOTIFICATION_CHANNEL = "MEDIAPLAYER_CHANNEL"
     companion object {
         val musicPlayer = MusicPlayer()
+        var trackIndex : Int = -1
         fun startService(context: Context, message: String) {
             val startIntent = Intent(context, MusicService::class.java)
             startIntent.putExtra("inputExtra", message)

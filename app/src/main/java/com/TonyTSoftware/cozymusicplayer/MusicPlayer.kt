@@ -49,7 +49,8 @@ class MusicPlayer {
             stop()
             wasPlaying = true
         }
-        mediaPlayer = MediaPlayer()
+        if (mediaPlayer == null)
+            mediaPlayer = MediaPlayer()
         if (trackUri != null) {
             selectedTrack = trackUri
             mediaPlayer?.setDataSource(context, selectedTrack!!)
@@ -67,6 +68,7 @@ class MusicPlayer {
 
     fun play() {
         if (selectedTrack != null && !mediaPlayer?.isPlaying!!) {
+            if (mediaPlayer == null) return
             mediaPlayer?.start()
         }
     }

@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.session.MediaSession
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
@@ -18,6 +19,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
+import java.lang.Exception
 
 
 class MainActivity : AppCompatActivity() {
@@ -31,7 +33,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var currentTrackView: TextView
     private lateinit var trackList : ArrayList<ListItemData>
     private var currentTrackIndex : Int? = -1
-    private lateinit var seekBarThread : Thread
+    private var threadsRunning = 0
     private lateinit var seekBar : SeekBar
     private var seekBarThreadRunning : Boolean = false
     private var seekBarisHeld : Boolean = false
@@ -64,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         seekBar.max = 1
         seekBar.progress = 0
         seekBar.isEnabled = false
+        seekBarThreadRunning = false
 
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener{
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
@@ -175,43 +178,35 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (isMusicServiceRunning()) {
-
+            loadDataFromService()
         }
     }
 
-    private fun getMinutesSecondsString(totalTimeMs : Int) : Pair<String,String>{
-        val totalSeconds = totalTimeMs / 1000
-        val finalMinutes = totalSeconds / 60
-        val finalSeconds = totalSeconds % 60
-
-        val finalMinutesString : String = if (finalMinutes >= 10) finalMinutes.toString() else "0$finalMinutes"
-        val finalSecondsString : String = if (finalSeconds >= 10) finalSeconds.toString() else "0$finalSeconds"
-
-        return Pair(finalMinutesString, finalSecondsString)
-    }
-
-    @SuppressLint("SetTextI18n")
-    fun selectTrack(trackIndex : Int) {
-        if (seekBarThreadRunning)
-        {
+    private fun loadDataFromService() {
+        if (seekBarThreadRunning) {
             seekBarThreadRunning = false
-            seekBarisHeld = false
+            Thread.sleep(20)
         }
 
-        currentTrackIndex = trackIndex
-        MusicService.musicPlayer.changeTrack(this, audioFilesUri[trackIndex])
-        val (title, artist) = MusicService.musicPlayer.getMetaData(this, audioFilesUri[trackIndex])
+        val (title, artist) = MusicService.musicPlayer.getMetaData(this, audioFilesUri[MusicService.trackIndex])
         if (title == null || artist == null)
-            currentTrackView.text = trackList[trackIndex].getFileName() + "\n" + "No metadata"
+            currentTrackView.text = trackList[MusicService.trackIndex].getFileName() + "\n" + "No metadata"
         else
             currentTrackView.text = "Title : $title\nArtist : $artist"
 
-        seekBarThreadRunning = true
+        if (!MusicService.musicPlayer.isPlaying() && !MusicService.musicPlayer.isStopped()) {
+            playbackBtn.text = "Pause"
+            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_pause)
+        } else {
+            playbackBtn.text = "Play"
+            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_play)
+        }
+
         seekBarisHeld = false
         seekBar.isEnabled = true
 
-        seekBarThread = Thread {
-
+        val seekBarThread = Thread {
+            threadsRunning = threadsRunning++
             while (true) {
                 if (!seekBarThreadRunning) {
                     runOnUiThread {
@@ -219,6 +214,7 @@ class MainActivity : AppCompatActivity() {
                         seekBar.max = 1
                         seekBar.progress = 0
                     }
+                    threadsRunning = threadsRunning--
                     break
                 }
 
@@ -257,20 +253,109 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        if (!seekBarThread.isAlive)
+        if (!seekBarThreadRunning) {
+            seekBarThreadRunning = true
             seekBarThread.start()
+        }
+
+    }
+
+    private fun getMinutesSecondsString(totalTimeMs : Int) : Pair<String,String>{
+        val totalSeconds = totalTimeMs / 1000
+        val finalMinutes = totalSeconds / 60
+        val finalSeconds = totalSeconds % 60
+
+        val finalMinutesString : String = if (finalMinutes >= 10) finalMinutes.toString() else "0$finalMinutes"
+        val finalSecondsString : String = if (finalSeconds >= 10) finalSeconds.toString() else "0$finalSeconds"
+
+        return Pair(finalMinutesString, finalSecondsString)
+    }
+
+    @SuppressLint("SetTextI18n")
+    fun selectTrack(trackIndex : Int) {
+        if (seekBarThreadRunning) {
+            seekBarThreadRunning = false
+            Thread.sleep(20)
+        }
+
+        currentTrackIndex = trackIndex
+        MusicService.trackIndex = trackIndex
+        MusicService.musicPlayer.changeTrack(this, audioFilesUri[trackIndex])
+        val (title, artist) = MusicService.musicPlayer.getMetaData(this, audioFilesUri[trackIndex])
+        if (title == null || artist == null)
+            currentTrackView.text = trackList[trackIndex].getFileName() + "\n" + "No metadata"
+        else
+            currentTrackView.text = "Title : $title\nArtist : $artist"
+
+
+        seekBarisHeld = false
+        seekBar.isEnabled = true
+
+        val seekBarThread = Thread {
+            threadsRunning = threadsRunning++
+            while (true) {
+                if (!seekBarThreadRunning) {
+                    runOnUiThread {
+                        timeView.text = "00:00 / 00:00"
+                        seekBar.max = 1
+                        seekBar.progress = 0
+                    }
+                    threadsRunning = threadsRunning--
+                    break
+                }
+
+                while (seekBarisHeld) {
+                    val total = MusicService.musicPlayer.getTrackDuration()
+                    val trackProgress = MusicService.musicPlayer.getTrackProgress()
+
+                    if (total != -1 && trackProgress != -1) {
+                        val (currentMinutesString, currentSecondsString) = getMinutesSecondsString(trackProgress)
+                        val (finalMinutesString, finalSecondsString) = getMinutesSecondsString(total)
+                        val (seekMinutesString, seekSecondsString) = getMinutesSecondsString(seekBar.progress)
+
+                        runOnUiThread {
+                            timeView.text = "$currentMinutesString:$currentSecondsString / $finalMinutesString:$finalSecondsString  Seeking to ( $seekMinutesString:$seekSecondsString )"
+                        }
+                        Thread.sleep(10)
+                    }
+                }
+
+                val total = MusicService.musicPlayer.getTrackDuration()
+                val trackProgress = MusicService.musicPlayer.getTrackProgress()
+
+                if (total != -1 && trackProgress != -1) {
+                    seekBar.max = total
+                    seekBar.progress = trackProgress
+
+                    val (currentMinutesString, currentSecondsString) = getMinutesSecondsString(trackProgress)
+                    val (finalMinutesString, finalSecondsString) = getMinutesSecondsString(total)
+
+                    runOnUiThread {
+                        timeView.text = "$currentMinutesString:$currentSecondsString / $finalMinutesString:$finalSecondsString"
+                    }
+                }
+
+                Thread.sleep(10)
+            }
+        }
+
+        if (!seekBarThreadRunning) {
+            seekBarThreadRunning = true
+            seekBarThread.start()
+        }
     }
 
     @SuppressLint("SetTextI18n")
     private fun stopPlayback() {
-        if (!MusicService.musicPlayer.isStopped()) {
+        //if (!MusicService.musicPlayer.isStopped()) {
             seekBarThreadRunning = false
             seekBar.isEnabled = false
             MusicService.musicPlayer.stop()
             currentTrackView.text = "No track selected"
             playbackBtn.text = "Play"
             (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_play)
-        }
+        //}
+
     }
 
     @SuppressLint("SetTextI18n")
@@ -379,6 +464,12 @@ class MainActivity : AppCompatActivity() {
             refreshUI()
         }
     }
+
+    override fun onDestroy() {
+        seekBarThreadRunning = false
+        super.onDestroy()
+    }
+
     private fun isMusicServiceRunning(): Boolean {
         val manager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
         for (service in manager.getRunningServices(Int.MAX_VALUE)) {
