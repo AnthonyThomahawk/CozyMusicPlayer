@@ -6,8 +6,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
@@ -16,7 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.media.app.NotificationCompat as MediaNotificationCompat
 
 
-class MusicService : Service(){
+class MusicService : Service() {
     private val NOTIFICATION_CHANNEL = "MEDIAPLAYER_CHANNEL"
     companion object {
         val musicPlayer = MusicPlayer()
@@ -25,12 +27,25 @@ class MusicService : Service(){
             val startIntent = Intent(context, MusicService::class.java)
             ContextCompat.startForegroundService(context, startIntent)
         }
+        fun startServiceInput(context: Context, msg: String) {
+            val startIntent = Intent(context, MusicService::class.java)
+            startIntent.putExtra("input", msg)
+            ContextCompat.startForegroundService(context, startIntent)
+        }
         fun stopService(context: Context) {
             val stopIntent = Intent(context, MusicService::class.java)
             context.stopService(stopIntent)
         }
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val phoneReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                startServiceInput(MainActivity.mainActivityPtr.baseContext, "forcepause")
+            }
+        }
+
+        registerReceiver(phoneReceiver, IntentFilter("android.intent.action.PHONE_STATE"))
+
         val (title, artist) = musicPlayer.getCurrentMetaData(this)
         val trackTitle: String = if (title == null || artist == null)
             musicPlayer.getCurrentFileName(this) + "\n" + "No metadata"
@@ -54,6 +69,12 @@ class MusicService : Service(){
                     musicPlayer.pause()
                     mpintent.putExtra("toggled", "paused")
                 }
+                sendBroadcast(mpintent)
+            }
+            "forcepause" -> {
+                val mpintent = Intent("MusicServiceIntent")
+                musicPlayer.pause()
+                mpintent.putExtra("toggled", "paused")
                 sendBroadcast(mpintent)
             }
             "prev" -> {

@@ -2,10 +2,13 @@ package com.TonyTSoftware.cozymusicplayer
 
 import android.annotation.SuppressLint
 import android.app.ActivityManager
+import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
@@ -52,6 +55,23 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        if (checkSelfPermission("android.permission.READ_PHONE_STATE") == PackageManager.PERMISSION_DENIED) {
+            val alertDialog: androidx.appcompat.app.AlertDialog = androidx.appcompat.app.AlertDialog.Builder(this@MainActivity).create()
+            alertDialog.setTitle("Phone permission request")
+            alertDialog.setMessage("The phone permission is needed for auto-pause of playback when receiving a call." +
+                    " This app is open-source and does not record your calls or use the permission for malicious purposes." +
+                    "  Please allow it in the next dialog.")
+            alertDialog.setButton(
+                AlertDialog.BUTTON_NEUTRAL, "OK"
+            ) { dialog, _ ->
+                run {
+                    requestPermissions(arrayOf("android.permission.READ_PHONE_STATE"), 1)
+                    dialog.dismiss()
+                }
+            }
+            alertDialog.show()
+        }
+
         threadsRunning = 0
 
         mainActivityPtr = this
@@ -90,7 +110,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        val receiver: BroadcastReceiver = object : BroadcastReceiver() {
+        val mediaControlsReceiver: BroadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(cont: Context, i: Intent) {
                 val extras = i.extras
                 if (extras != null) {
@@ -123,7 +143,8 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        registerReceiver(receiver, IntentFilter("MusicServiceIntent"))
+
+        registerReceiver(mediaControlsReceiver, IntentFilter("MusicServiceIntent"))
 
         val selectFolderBtn : Button = findViewById(R.id.selectfolderbtn)
 
