@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import java.lang.Exception
+import kotlin.properties.Delegates
 
 
 class MainActivity : AppCompatActivity() {
@@ -33,7 +34,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var currentTrackView: TextView
     private lateinit var trackList : ArrayList<ListItemData>
     private var currentTrackIndex : Int? = -1
-    private var threadsRunning = 0
+
     private lateinit var seekBar : SeekBar
     private var seekBarThreadRunning : Boolean = false
     private var seekBarisHeld : Boolean = false
@@ -45,11 +46,14 @@ class MainActivity : AppCompatActivity() {
 
     companion object { // a bit non optimal, will change this later
         lateinit var mainActivityPtr : MainActivity
+        var threadsRunning by Delegates.notNull<Int>()
     }
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        threadsRunning = 0
 
         mainActivityPtr = this
 
@@ -94,15 +98,20 @@ class MainActivity : AppCompatActivity() {
                     if (extras.getString("toggled") != null) {
                         if (extras.getString("toggled") == "paused") {
                             playbackBtn.text = "Play"
-                            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(applicationContext, android.R.drawable.ic_media_play)
+                            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(mainActivityPtr.baseContext, android.R.drawable.ic_media_play)
                         }
                         else {
                             playbackBtn.text = "Pause"
-                            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(applicationContext, android.R.drawable.ic_media_pause)
+                            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(mainActivityPtr.baseContext, android.R.drawable.ic_media_pause)
                         }
                     }
                     if (extras.getBoolean("stop")) {
-                        stopPlayback()
+                        seekBarThreadRunning = false
+                        seekBar.isEnabled = false
+                        currentTrackView.text = "No track selected"
+                        playbackBtn.text = "Play"
+                        (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(
+                            mainActivityPtr.baseContext, android.R.drawable.ic_media_play)
                     }
                     if (extras.getString("switch") != null) {
                         if (extras.getString("switch") == "prev") {
@@ -145,8 +154,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         stopBtn.setOnClickListener {
-            if (isMusicServiceRunning())
-                MusicService.stopService(this)
             stopPlayback()
         }
 
@@ -196,19 +203,22 @@ class MainActivity : AppCompatActivity() {
 
         if (!MusicService.musicPlayer.isPlaying() && !MusicService.musicPlayer.isStopped()) {
             playbackBtn.text = "Pause"
-            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_pause)
+            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(mainActivityPtr.baseContext, android.R.drawable.ic_media_pause)
         } else {
             playbackBtn.text = "Play"
-            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_play)
+            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(mainActivityPtr.baseContext, android.R.drawable.ic_media_play)
         }
 
         seekBarisHeld = false
         seekBar.isEnabled = true
 
         val seekBarThread = Thread {
+            if (threadsRunning != 0) {
+                return@Thread
+            }
             threadsRunning = threadsRunning++
             while (true) {
-                if (!seekBarThreadRunning) {
+                if (!seekBarThreadRunning || MusicService.musicPlayer.isStopped()) {
                     runOnUiThread {
                         timeView.text = "00:00 / 00:00"
                         seekBar.max = 1
@@ -232,6 +242,10 @@ class MainActivity : AppCompatActivity() {
                         }
                         Thread.sleep(10)
                     }
+                }
+
+                if (threadsRunning != 0) {
+                    return@Thread
                 }
 
                 val total = MusicService.musicPlayer.getTrackDuration()
@@ -292,9 +306,12 @@ class MainActivity : AppCompatActivity() {
         seekBar.isEnabled = true
 
         val seekBarThread = Thread {
+            if (threadsRunning != 0) {
+                return@Thread
+            }
             threadsRunning = threadsRunning++
             while (true) {
-                if (!seekBarThreadRunning) {
+                if (!seekBarThreadRunning || MusicService.musicPlayer.isStopped()) {
                     runOnUiThread {
                         timeView.text = "00:00 / 00:00"
                         seekBar.max = 1
@@ -318,6 +335,10 @@ class MainActivity : AppCompatActivity() {
                         }
                         Thread.sleep(10)
                     }
+                }
+
+                if (threadsRunning != 0) {
+                    return@Thread
                 }
 
                 val total = MusicService.musicPlayer.getTrackDuration()
@@ -347,14 +368,16 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetTextI18n")
     private fun stopPlayback() {
-        //if (!MusicService.musicPlayer.isStopped()) {
+        if (!MusicService.musicPlayer.isStopped()) {
             seekBarThreadRunning = false
             seekBar.isEnabled = false
-            MusicService.musicPlayer.stop()
+            if (isMusicServiceRunning())
+                MusicService.musicPlayer.stop()
+            MusicService.stopService(this)
             currentTrackView.text = "No track selected"
             playbackBtn.text = "Play"
             (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_play)
-        //}
+        }
 
     }
 

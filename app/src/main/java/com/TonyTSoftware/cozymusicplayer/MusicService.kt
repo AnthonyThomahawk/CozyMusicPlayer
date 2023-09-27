@@ -39,6 +39,7 @@ class MusicService : Service(){
             val mpintent = Intent("MusicServiceIntent")
             mpintent.putExtra("stop", true)
             sendBroadcast(mpintent)
+            musicPlayer.stop()
             stopSelf()
         } else if (i == "toggle") {
             val mpintent = Intent("MusicServiceIntent")
