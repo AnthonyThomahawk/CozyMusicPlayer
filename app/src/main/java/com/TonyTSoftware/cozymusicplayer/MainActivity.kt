@@ -15,6 +15,7 @@ import android.widget.Switch
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -138,11 +139,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         val settings = getSharedPreferences(PREFS_NAME, 0)
+
+
         val retrievedPaths = settings.getStringSet("stringUris", null)
 
         if (retrievedPaths != null) {
             for (strUri in retrievedPaths) {
-                audioFilesUri.add(Uri.parse(strUri))
+                audioFilesUri.add(strUri.toUri())
             }
             refreshUI()
         }
@@ -446,7 +449,10 @@ class MainActivity : AppCompatActivity() {
                         val musicFileExtensions = arrayOf("mp3", "ogg", "flac", "m4a", "3gp", "wav")
                         val fileExtension = file.name?.substringAfterLast('.', "")
                         if (fileExtension in musicFileExtensions && file.uri !in audioFilesUri)
-                            audioFilesUri.add(file.uri)
+                        {
+                            val f = file.uri
+                            audioFilesUri.add(f)
+                        }
                     }
         }
     }
@@ -454,6 +460,14 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == RESULT_OK && requestCode == folderPickRequestCode) {
+            val contentResolver = applicationContext.contentResolver
+
+            val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+
+            data?.data?.let { contentResolver.takePersistableUriPermission(it, takeFlags) }
+
+
             scanFolderUri(data?.data)
 
             val settings = getSharedPreferences(PREFS_NAME, 0)
