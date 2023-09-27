@@ -150,7 +150,7 @@ class MainActivity : AppCompatActivity() {
 
         playbackBtn.setOnClickListener {
             if (!isMusicServiceRunning())
-                MusicService.startService(this, "test")
+                MusicService.startService(this)
             toggleMusicPlayback()
         }
 
@@ -294,6 +294,8 @@ class MainActivity : AppCompatActivity() {
             seekBarThreadRunning = false
             Thread.sleep(20)
         }
+
+        MusicService.startService(this)
 
         currentTrackIndex = trackIndex
         MusicService.trackIndex = trackIndex

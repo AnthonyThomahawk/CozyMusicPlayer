@@ -21,9 +21,8 @@ class MusicService : Service(){
     companion object {
         val musicPlayer = MusicPlayer()
         var trackIndex : Int = -1
-        fun startService(context: Context, message: String) {
+        fun startService(context: Context) {
             val startIntent = Intent(context, MusicService::class.java)
-            startIntent.putExtra("inputExtra", message)
             ContextCompat.startForegroundService(context, startIntent)
         }
         fun stopService(context: Context) {
@@ -32,33 +31,41 @@ class MusicService : Service(){
         }
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val input = intent?.getStringExtra("inputExtra")
+        val (title, artist) = musicPlayer.getCurrentMetaData(this)
+        val trackTitle: String = if (title == null || artist == null)
+            musicPlayer.getCurrentFileName(this) + "\n" + "No metadata"
+        else
+            "Title : $title\nArtist : $artist"
 
-        val i = intent?.getStringExtra("input")
-        if (i == "exit") {
-            val mpintent = Intent("MusicServiceIntent")
-            mpintent.putExtra("stop", true)
-            sendBroadcast(mpintent)
-            musicPlayer.stop()
-            stopSelf()
-        } else if (i == "toggle") {
-            val mpintent = Intent("MusicServiceIntent")
-            if (!musicPlayer.isPlaying() && !musicPlayer.isStopped()) {
-                musicPlayer.play()
-                mpintent.putExtra("toggled", "playing")
-            } else {
-                musicPlayer.pause()
-                mpintent.putExtra("toggled", "paused")
+        when (intent?.getStringExtra("input")) {
+            "exit" -> {
+                val mpintent = Intent("MusicServiceIntent")
+                mpintent.putExtra("stop", true)
+                sendBroadcast(mpintent)
+                musicPlayer.stop()
+                stopSelf()
             }
-            sendBroadcast(mpintent)
-        } else if (i == "prev") {
-            val mpintent = Intent("MusicServiceIntent")
-            mpintent.putExtra("switch", "prev")
-            sendBroadcast(mpintent)
-        } else if (i == "next") {
-            val mpintent = Intent("MusicServiceIntent")
-            mpintent.putExtra("switch", "next")
-            sendBroadcast(mpintent)
+            "toggle" -> {
+                val mpintent = Intent("MusicServiceIntent")
+                if (!musicPlayer.isPlaying() && !musicPlayer.isStopped()) {
+                    musicPlayer.play()
+                    mpintent.putExtra("toggled", "playing")
+                } else {
+                    musicPlayer.pause()
+                    mpintent.putExtra("toggled", "paused")
+                }
+                sendBroadcast(mpintent)
+            }
+            "prev" -> {
+                val mpintent = Intent("MusicServiceIntent")
+                mpintent.putExtra("switch", "prev")
+                sendBroadcast(mpintent)
+            }
+            "next" -> {
+                val mpintent = Intent("MusicServiceIntent")
+                mpintent.putExtra("switch", "next")
+                sendBroadcast(mpintent)
+            }
         }
 
         createNotificationChannel()
@@ -94,7 +101,7 @@ class MusicService : Service(){
 
         val notification: Notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL)
             .setContentTitle("Cozy Music Player")
-            .setContentText(input)
+            .setContentText(trackTitle)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSmallIcon(R.drawable.ic_media_play)
             .addAction(R.drawable.ic_media_previous, "Previous", pIntent)
@@ -119,7 +126,7 @@ class MusicService : Service(){
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val serviceChannel = NotificationChannel(NOTIFICATION_CHANNEL, "MEDIAPLAYER_CHANNEL",
+            val serviceChannel = NotificationChannel(NOTIFICATION_CHANNEL, "MEDIA PLAYER_CHANNEL",
                 NotificationManager.IMPORTANCE_LOW)
             val manager = getSystemService(NotificationManager::class.java)
             manager!!.createNotificationChannel(serviceChannel)

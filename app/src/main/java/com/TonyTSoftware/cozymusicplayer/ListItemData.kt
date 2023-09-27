@@ -1,7 +1,5 @@
 package com.TonyTSoftware.cozymusicplayer
 
-import android.net.Uri
-
 class ListItemData(
     private var fileName: String?,
     private var trackTitle: String?,

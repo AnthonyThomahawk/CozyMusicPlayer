@@ -4,6 +4,8 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
+import androidx.core.net.toFile
+import androidx.documentfile.provider.DocumentFile
 import kotlin.properties.Delegates
 
 class MusicPlayer {
@@ -19,6 +21,21 @@ class MusicPlayer {
         val title : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
         val year : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)
         return Triple(title,artist,year)
+    }
+
+    fun getCurrentMetaData(context: Context) : Triple<String?,String?, String?> {
+        val metaDataRetriever = MediaMetadataRetriever()
+        metaDataRetriever.setDataSource(context, selectedTrack)
+        val artist : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+        val title : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+        val year : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)
+        return Triple(title,artist,year)
+    }
+
+    fun getCurrentFileName(context: Context): String? {
+        val audioFileDoc : DocumentFile? =
+            selectedTrack?.let { DocumentFile.fromSingleUri(context, it) }
+        return audioFileDoc?.name
     }
 
     fun isStopped(): Boolean {
