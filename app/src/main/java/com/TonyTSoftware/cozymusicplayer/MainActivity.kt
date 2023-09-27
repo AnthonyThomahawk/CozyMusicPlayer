@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.media.session.MediaSession
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
@@ -20,7 +19,6 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
-import java.lang.Exception
 import kotlin.properties.Delegates
 
 
@@ -45,7 +43,7 @@ class MainActivity : AppCompatActivity() {
     private var shuffle : Boolean = false
     private val PREFS_NAME = "MUSICPLAYER_SETTINGS"
 
-    companion object { // a bit non optimal, will change this later
+    companion object {
         lateinit var mainActivityPtr : MainActivity
         var threadsRunning by Delegates.notNull<Int>()
     }
@@ -204,13 +202,15 @@ class MainActivity : AppCompatActivity() {
         else
             currentTrackView.text = "Title : $title\nArtist : $artist"
 
-        if (!MusicService.musicPlayer.isPlaying() && !MusicService.musicPlayer.isStopped()) {
+        if (MusicService.musicPlayer.isPlaying() && !MusicService.musicPlayer.isStopped()) {
             playbackBtn.text = "Pause"
             (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(mainActivityPtr.baseContext, android.R.drawable.ic_media_pause)
         } else {
             playbackBtn.text = "Play"
             (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(mainActivityPtr.baseContext, android.R.drawable.ic_media_play)
         }
+
+        currentTrackIndex = MusicService.trackIndex
 
         seekBarisHeld = false
         seekBar.isEnabled = true
@@ -449,10 +449,7 @@ class MainActivity : AppCompatActivity() {
                         val musicFileExtensions = arrayOf("mp3", "ogg", "flac", "m4a", "3gp", "wav")
                         val fileExtension = file.name?.substringAfterLast('.', "")
                         if (fileExtension in musicFileExtensions && file.uri !in audioFilesUri)
-                        {
-                            val f = file.uri
-                            audioFilesUri.add(f)
-                        }
+                            audioFilesUri.add(file.uri)
                     }
         }
     }
