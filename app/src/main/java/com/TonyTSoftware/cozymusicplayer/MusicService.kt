@@ -13,6 +13,7 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
+import android.telephony.TelephonyManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.media.app.NotificationCompat as MediaNotificationCompat
@@ -42,7 +43,11 @@ class MusicService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val phoneReceiver: BroadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                startServiceInput(MainActivity.mainActivityPtr.baseContext, "forcepause")
+                val stateStr = intent.extras?.getString(TelephonyManager.EXTRA_STATE)
+                if (stateStr == TelephonyManager.EXTRA_STATE_RINGING)
+                    startServiceInput(MainActivity.mainActivityPtr.baseContext, "forcepause")
+                else if (stateStr == TelephonyManager.EXTRA_STATE_IDLE)
+                    startServiceInput(MainActivity.mainActivityPtr.baseContext, "forceplay")
             }
         }
 
@@ -77,6 +82,12 @@ class MusicService : Service() {
                 val mpintent = Intent("MusicServiceIntent")
                 musicPlayer.pause()
                 mpintent.putExtra("toggled", "paused")
+                sendBroadcast(mpintent)
+            }
+            "forceplay" -> {
+                val mpintent = Intent("MusicServiceIntent")
+                musicPlayer.play()
+                mpintent.putExtra("toggled", "playing")
                 sendBroadcast(mpintent)
             }
             "prev" -> {
