@@ -144,14 +144,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        if (!MusicService.mediaReceiverInit) { // check for duplicate receiver on new activity
+        // do not register new receiver if one is already registered
+        if (!MusicService.mediaReceiverInit) {
             MusicService.mediaReceiver = mediaControlsReceiver
             MusicService.mediaReceiverInit = true
+            registerReceiver(MusicService.mediaReceiver, IntentFilter("MusicServiceIntent"))
         }
-
-        // register the old receiver if needed
-
-        registerReceiver(MusicService.mediaReceiver, IntentFilter("MusicServiceIntent"))
 
         val selectFolderBtn : Button = findViewById(R.id.selectfolderbtn)
 
