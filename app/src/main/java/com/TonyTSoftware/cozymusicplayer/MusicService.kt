@@ -9,15 +9,13 @@ import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
+import android.media.AudioManager
 import android.os.Build
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
-import android.telephony.TelephonyManager
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import java.lang.Exception
 import androidx.media.app.NotificationCompat as MediaNotificationCompat
 
 
@@ -27,6 +25,8 @@ class MusicService : Service() {
         val musicPlayer = MusicPlayer()
         lateinit var mediaReceiver : BroadcastReceiver
         var mediaReceiverInit = false
+        var callThreadRunning = false
+        var serviceStopped = true
         var trackIndex : Int = -1
         fun startService(context: Context) {
             try {
@@ -48,6 +48,8 @@ class MusicService : Service() {
         fun stopService(context: Context) {
             try {
                 val stopIntent = Intent(context, MusicService::class.java)
+                callThreadRunning = false
+                Thread.sleep(250)
                 context.stopService(stopIntent)
             } catch (e : Exception) {
                 Toast.makeText(context, "Failed to stop music service, Error : $e", Toast.LENGTH_LONG).show()
@@ -55,18 +57,41 @@ class MusicService : Service() {
 
         }
     }
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val phoneReceiver: BroadcastReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                val stateStr = intent.extras?.getString(TelephonyManager.EXTRA_STATE)
-                if (stateStr == TelephonyManager.EXTRA_STATE_RINGING)
-                    startServiceInput(MainActivity.mainActivityPtr.baseContext, "forcepause")
-                else if (stateStr == TelephonyManager.EXTRA_STATE_IDLE)
-                    startServiceInput(MainActivity.mainActivityPtr.baseContext, "forceplay")
-            }
-        }
 
-        registerReceiver(phoneReceiver, IntentFilter("android.intent.action.PHONE_STATE"))
+    private fun isInCall(context: Context): Boolean {
+        val manager = context.getSystemService(AUDIO_SERVICE) as AudioManager
+        return manager.mode == AudioManager.MODE_IN_CALL || manager.mode == AudioManager.MODE_RINGTONE
+    }
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        serviceStopped = false
+        if (!callThreadRunning) {
+            callThreadRunning = true
+            val callThread = Thread {
+                var prevstate = false
+                var incall: Boolean
+                while (callThreadRunning) {
+                    try {
+                        incall = isInCall(this)
+
+                        if (incall != prevstate) {
+                            if (incall) {
+                                startServiceInput(MainActivity.mainActivityPtr.baseContext, "forcepause")
+                            }
+                            else {
+                                startServiceInput(MainActivity.mainActivityPtr.baseContext, "forceplay")
+                            }
+                            prevstate = incall
+                        }
+                    } catch (e : Exception) {
+                        callThreadRunning = false
+                        break
+                    }
+
+                    Thread.sleep(250)
+                }
+            }
+            callThread.start()
+        }
 
         var trackTitle = ""
         try {
@@ -86,6 +111,7 @@ class MusicService : Service() {
                 mpintent.putExtra("stop", true)
                 sendBroadcast(mpintent)
                 MainActivity.mainActivityPtr.stopPlayback()
+                callThreadRunning = false
                 stopSelf()
             }
             "toggle" -> {
@@ -169,6 +195,8 @@ class MusicService : Service() {
                     .setMediaSession(ms.sessionToken)
             )
             .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOngoing(true)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
 
@@ -182,7 +210,7 @@ class MusicService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(NOTIFICATION_CHANNEL, "MEDIA PLAYER_CHANNEL",
-                NotificationManager.IMPORTANCE_LOW)
+                NotificationManager.IMPORTANCE_HIGH)
             val manager = getSystemService(NotificationManager::class.java)
             manager!!.createNotificationChannel(serviceChannel)
         }

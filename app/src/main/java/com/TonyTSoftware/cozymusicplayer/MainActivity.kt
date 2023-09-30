@@ -2,12 +2,10 @@ package com.TonyTSoftware.cozymusicplayer
 
 import android.annotation.SuppressLint
 import android.app.ActivityManager
-import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
@@ -22,7 +20,6 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
-import java.lang.Exception
 import kotlin.properties.Delegates
 
 
@@ -56,23 +53,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        if (checkSelfPermission("android.permission.READ_PHONE_STATE") == PackageManager.PERMISSION_DENIED) {
-            val alertDialog: androidx.appcompat.app.AlertDialog = androidx.appcompat.app.AlertDialog.Builder(this@MainActivity).create()
-            alertDialog.setTitle("Phone permission request")
-            alertDialog.setMessage("The phone permission is needed for auto-pause of playback when receiving a call." +
-                    " This app is open-source and does not record your calls or use the permission for malicious purposes." +
-                    "  Please allow it in the next dialog.")
-            alertDialog.setButton(
-                AlertDialog.BUTTON_NEUTRAL, "OK"
-            ) { dialog, _ ->
-                run {
-                    requestPermissions(arrayOf("android.permission.READ_PHONE_STATE"), 1)
-                    dialog.dismiss()
-                }
-            }
-            alertDialog.show()
-        }
 
         threadsRunning = 0
 
@@ -269,6 +249,9 @@ class MainActivity : AppCompatActivity() {
             }
             threadsRunning = threadsRunning++
             while (true) {
+                if (MusicService.serviceStopped)
+                    return@Thread
+
                 if (!seekBarThreadRunning || MusicService.musicPlayer.isStopped()) {
                     runOnUiThread {
                         timeView.text = "00:00 / 00:00"
@@ -394,8 +377,8 @@ class MainActivity : AppCompatActivity() {
                     return@Thread
                 }
 
-                val total = MusicService.musicPlayer.getTrackDuration()
-                val trackProgress = MusicService.musicPlayer.getTrackProgress()
+                val total: Int = MusicService.musicPlayer.getTrackDuration()
+                val trackProgress: Int = MusicService.musicPlayer.getTrackProgress()
 
                 if (total != -1 && trackProgress != -1) {
                     seekBar.max = total
@@ -417,6 +400,10 @@ class MainActivity : AppCompatActivity() {
             seekBarThreadRunning = true
             seekBarThread.start()
         }
+
+        MusicService.musicPlayer.play()
+        playbackBtn.text = "Pause"
+        (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_pause)
     }
 
     @SuppressLint("SetTextI18n")
@@ -424,9 +411,10 @@ class MainActivity : AppCompatActivity() {
         if (!MusicService.musicPlayer.isStopped()) {
             seekBarThreadRunning = false
             seekBar.isEnabled = false
-            if (isMusicServiceRunning())
+            if (isMusicServiceRunning()) {
                 MusicService.musicPlayer.stop()
-            MusicService.stopService(this)
+                MusicService.stopService(this)
+            }
             currentTrackView.text = "No track selected"
             currentTrackIndex = -1
             MusicService.trackIndex = -1
