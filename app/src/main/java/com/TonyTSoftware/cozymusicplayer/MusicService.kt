@@ -14,8 +14,10 @@ import android.os.Build
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import android.telephony.TelephonyManager
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import java.lang.Exception
 import androidx.media.app.NotificationCompat as MediaNotificationCompat
 
 
@@ -27,17 +29,30 @@ class MusicService : Service() {
         var mediaReceiverInit = false
         var trackIndex : Int = -1
         fun startService(context: Context) {
-            val startIntent = Intent(context, MusicService::class.java)
-            ContextCompat.startForegroundService(context, startIntent)
+            try {
+                val startIntent = Intent(context, MusicService::class.java)
+                ContextCompat.startForegroundService(context, startIntent)
+            } catch (e : Exception) {
+                Toast.makeText(context, "Failed to start music service, Error : $e", Toast.LENGTH_LONG).show()
+            }
         }
         fun startServiceInput(context: Context, msg: String) {
-            val startIntent = Intent(context, MusicService::class.java)
-            startIntent.putExtra("input", msg)
-            ContextCompat.startForegroundService(context, startIntent)
+            try {
+                val startIntent = Intent(context, MusicService::class.java)
+                startIntent.putExtra("input", msg)
+                ContextCompat.startForegroundService(context, startIntent)}
+            catch (e : Exception) {
+                Toast.makeText(context, "Failed to start music service, Error : $e", Toast.LENGTH_LONG).show()
+            }
         }
         fun stopService(context: Context) {
-            val stopIntent = Intent(context, MusicService::class.java)
-            context.stopService(stopIntent)
+            try {
+                val stopIntent = Intent(context, MusicService::class.java)
+                context.stopService(stopIntent)
+            } catch (e : Exception) {
+                Toast.makeText(context, "Failed to stop music service, Error : $e", Toast.LENGTH_LONG).show()
+            }
+
         }
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -53,18 +68,24 @@ class MusicService : Service() {
 
         registerReceiver(phoneReceiver, IntentFilter("android.intent.action.PHONE_STATE"))
 
-        val (title, artist) = musicPlayer.getCurrentMetaData(this)
-        val trackTitle: String = if (title == null || artist == null)
-            musicPlayer.getCurrentFileName(this) + "\n" + "No metadata"
-        else
-            "Title : $title\nArtist : $artist"
+        var trackTitle = ""
+        try {
+            val (title, artist) = musicPlayer.getCurrentMetaData(this)
+            trackTitle = if (title == null || artist == null)
+                musicPlayer.getCurrentFileName(this) + "\n" + "No metadata"
+            else
+                "Title : $title\nArtist : $artist"
+        } catch (e : Exception) {
+            Toast.makeText(this, "Unable to retrieve track metadata, Error : $e", Toast.LENGTH_LONG).show()
+        }
+
 
         when (intent?.getStringExtra("input")) {
             "exit" -> {
                 val mpintent = Intent("MusicServiceIntent")
                 mpintent.putExtra("stop", true)
                 sendBroadcast(mpintent)
-                musicPlayer.stop()
+                MainActivity.mainActivityPtr.stopPlayback()
                 stopSelf()
             }
             "toggle" -> {

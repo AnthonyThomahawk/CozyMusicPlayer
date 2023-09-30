@@ -14,6 +14,7 @@ import android.widget.Button
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -21,6 +22,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
+import java.lang.Exception
 import kotlin.properties.Delegates
 
 
@@ -50,7 +52,7 @@ class MainActivity : AppCompatActivity() {
         lateinit var mainActivityPtr : MainActivity
         var threadsRunning by Delegates.notNull<Int>()
     }
-    @SuppressLint("SetTextI18n")
+    @SuppressLint("SetTextI18n", "UnspecifiedRegisterReceiverFlag")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -175,21 +177,41 @@ class MainActivity : AppCompatActivity() {
         }
 
         playbackBtn.setOnClickListener {
-            if (!isMusicServiceRunning())
-                MusicService.startService(this)
-            toggleMusicPlayback()
+            try {
+                if (currentTrackIndex != -1) {
+                    if (!isMusicServiceRunning())
+                        MusicService.startService(this)
+                    toggleMusicPlayback()
+                }
+            } catch (e : Exception) {
+                Toast.makeText(this, "Error toggling playback : $e", Toast.LENGTH_LONG).show()
+            }
+
         }
 
         stopBtn.setOnClickListener {
-            stopPlayback()
+            try {
+                stopPlayback()
+            } catch (e : Exception) {
+                Toast.makeText(this, "Error stopping playback : $e", Toast.LENGTH_LONG).show()
+            }
         }
 
         prevBtn.setOnClickListener {
-            prevTrack()
+            try {
+                prevTrack()
+            } catch (e : Exception) {
+                Toast.makeText(this, "Error moving to previous track : $e", Toast.LENGTH_LONG).show()
+            }
         }
 
         nextBtn.setOnClickListener {
-            nextTrack()
+            try {
+                nextTrack()
+            } catch (e : Exception) {
+                Toast.makeText(this, "Error moving to next track : $e", Toast.LENGTH_LONG).show()
+            }
+
         }
 
         MusicService.musicPlayer.autoPlay = autoPlaySwitch.isChecked
@@ -398,7 +420,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetTextI18n")
-    private fun stopPlayback() {
+    fun stopPlayback() {
         if (!MusicService.musicPlayer.isStopped()) {
             seekBarThreadRunning = false
             seekBar.isEnabled = false
@@ -406,6 +428,8 @@ class MainActivity : AppCompatActivity() {
                 MusicService.musicPlayer.stop()
             MusicService.stopService(this)
             currentTrackView.text = "No track selected"
+            currentTrackIndex = -1
+            MusicService.trackIndex = -1
             playbackBtn.text = "Play"
             (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_play)
         }
@@ -454,10 +478,15 @@ class MainActivity : AppCompatActivity() {
     private fun refreshUI() {
         trackList = ArrayList()
         for ((index, audioFileUri) in audioFilesUri.withIndex()) {
-            val audioFileDoc : DocumentFile? = DocumentFile.fromSingleUri(this, audioFileUri)
-            val filename = audioFileDoc?.name
-            val (title, artist) = MusicService.musicPlayer.getMetaData(this, audioFileUri)
-            trackList.add(ListItemData(filename, title, artist, index))
+            try {
+                val audioFileDoc : DocumentFile? = DocumentFile.fromSingleUri(this, audioFileUri)
+                val filename = audioFileDoc?.name
+                val (title, artist) = MusicService.musicPlayer.getMetaData(this, audioFileUri)
+                trackList.add(ListItemData(filename, title, artist, index))
+            } catch (e : Exception) {
+                Toast.makeText(this, "Unable to load file, Error : $e", Toast.LENGTH_LONG).show()
+            }
+
         }
         val recyclerView : RecyclerView = findViewById(R.id.recyclerView)
         val trackListAdapter = TrackListAdapter(trackList)

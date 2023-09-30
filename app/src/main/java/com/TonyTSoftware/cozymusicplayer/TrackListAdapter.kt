@@ -1,6 +1,4 @@
 package com.TonyTSoftware.cozymusicplayer
-import android.content.Context
-import android.content.res.Resources
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -24,7 +22,7 @@ class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapt
         if (title == null || artist == null)
             holder.trackTextView.text = filename
         else
-            holder.trackTextView.text = title + " - " + artist
+            holder.trackTextView.text = "$title - $artist"
         holder.trackIndex = item.getTrackIndex()
         holder.relativeLayout.setOnClickListener {
             MainActivity.mainActivityPtr.selectTrack(holder.trackIndex!!)
