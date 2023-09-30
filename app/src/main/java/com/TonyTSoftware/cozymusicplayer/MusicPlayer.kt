@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
+import android.util.Log
 import androidx.core.net.toFile
 import androidx.documentfile.provider.DocumentFile
 import kotlin.properties.Delegates
@@ -72,7 +73,12 @@ class MusicPlayer {
             selectedTrack = trackUri
             mediaPlayer?.setDataSource(context, selectedTrack!!)
         }
-        mediaPlayer?.prepare()
+        try {
+            mediaPlayer?.prepare()
+        } catch (e : Exception) {
+            println(e)
+        }
+
         if (autoPlay){
             mediaPlayer!!.setOnCompletionListener {
                 MainActivity.mainActivityPtr.nextTrack()

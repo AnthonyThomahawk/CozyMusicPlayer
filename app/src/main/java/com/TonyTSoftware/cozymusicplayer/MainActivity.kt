@@ -5,7 +5,6 @@ import android.app.ActivityManager
 import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
@@ -38,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private var currentTrackIndex : Int? = -1
 
     private lateinit var seekBar : SeekBar
+
     private var seekBarThreadRunning : Boolean = false
     private var seekBarisHeld : Boolean = false
     private lateinit var timeView : TextView
@@ -144,7 +144,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        registerReceiver(mediaControlsReceiver, IntentFilter("MusicServiceIntent"))
+        if (!MusicService.mediaReceiverInit) { // check for duplicate receiver on new activity
+            MusicService.mediaReceiver = mediaControlsReceiver
+            MusicService.mediaReceiverInit = true
+        }
+
+        // register the old receiver if needed
+
+        registerReceiver(MusicService.mediaReceiver, IntentFilter("MusicServiceIntent"))
 
         val selectFolderBtn : Button = findViewById(R.id.selectfolderbtn)
 

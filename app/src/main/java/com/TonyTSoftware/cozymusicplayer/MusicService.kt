@@ -22,6 +22,8 @@ class MusicService : Service() {
     private val NOTIFICATION_CHANNEL = "MEDIAPLAYER_CHANNEL"
     companion object {
         val musicPlayer = MusicPlayer()
+        lateinit var mediaReceiver : BroadcastReceiver
+        var mediaReceiverInit = false
         var trackIndex : Int = -1
         fun startService(context: Context) {
             val startIntent = Intent(context, MusicService::class.java)
