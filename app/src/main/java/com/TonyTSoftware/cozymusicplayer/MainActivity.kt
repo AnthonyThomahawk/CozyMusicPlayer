@@ -126,10 +126,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // do not register new receiver if one is already registered
-        if (!MusicService.mediaReceiverInit) {
+        // unregister old receiver from previous context when main activity re-opens
+
+        if (MusicService.mediaReceiverInit) {
+            MusicService.oldContext.unregisterReceiver(MusicService.mediaReceiver)
             MusicService.mediaReceiver = mediaControlsReceiver
+            MusicService.oldContext = this
+            registerReceiver(MusicService.mediaReceiver, IntentFilter("MusicServiceIntent"))
+        } else {
+            MusicService.oldContext = this
             MusicService.mediaReceiverInit = true
+            MusicService.mediaReceiver = mediaControlsReceiver
             registerReceiver(MusicService.mediaReceiver, IntentFilter("MusicServiceIntent"))
         }
 

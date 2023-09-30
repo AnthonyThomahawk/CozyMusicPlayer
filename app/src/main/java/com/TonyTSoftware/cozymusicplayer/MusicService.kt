@@ -24,6 +24,7 @@ class MusicService : Service() {
     companion object {
         val musicPlayer = MusicPlayer()
         lateinit var mediaReceiver : BroadcastReceiver
+        lateinit var oldContext: Context
         var mediaReceiverInit = false
         var callThreadRunning = false
         var serviceStopped = true
