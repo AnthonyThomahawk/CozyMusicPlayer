@@ -12,6 +12,7 @@ import android.content.Intent
 import android.media.AudioManager
 import android.os.Build
 import android.os.IBinder
+import android.provider.MediaStore.Audio
 import android.support.v4.media.session.MediaSessionCompat
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
@@ -60,10 +61,6 @@ class MusicService : Service() {
         }
     }
 
-    private fun isInCall(context: Context): Boolean {
-        val manager = context.getSystemService(AUDIO_SERVICE) as AudioManager
-        return manager.mode == AudioManager.MODE_IN_CALL || manager.mode == AudioManager.MODE_RINGTONE
-    }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         serviceStopped = false
         // thread that checks if user is in call every 250 ms
@@ -72,15 +69,16 @@ class MusicService : Service() {
             val callThread = Thread {
                 var prevstate = false
                 var incall: Boolean
+                val manager = this.getSystemService(AUDIO_SERVICE) as AudioManager
                 while (callThreadRunning) {
                     try {
-                        incall = isInCall(this)
+                        incall = manager.mode == AudioManager.MODE_IN_CALL || manager.mode == AudioManager.MODE_RINGTONE
                         // if phone state is changed, pause playback on ring/call and resume after call has ended
                         if (incall != prevstate) {
                             if (incall) {
                                 startServiceInput(MainActivity.mainActivityPtr.baseContext, "forcepause")
                             }
-                            else {
+                            else if (manager.mode == AudioManager.MODE_NORMAL) {
                                 startServiceInput(MainActivity.mainActivityPtr.baseContext, "forceplay")
                             }
                             prevstate = incall
