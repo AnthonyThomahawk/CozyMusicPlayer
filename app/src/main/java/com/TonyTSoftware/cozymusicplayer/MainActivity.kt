@@ -49,6 +49,64 @@ class MainActivity : AppCompatActivity() {
         lateinit var mainActivityPtr : MainActivity
         var threadsRunning by Delegates.notNull<Int>()
     }
+
+    private fun createSeekBarThread() : Thread {
+        return Thread {
+            if (threadsRunning != 0) {
+                return@Thread
+            }
+            threadsRunning = threadsRunning++
+            while (true) {
+                if (!seekBarThreadRunning || MusicService.musicPlayer.isStopped()) {
+                    runOnUiThread {
+                        timeView.text = "00:00 / 00:00"
+                        seekBar.max = 1
+                        seekBar.progress = 0
+                    }
+                    threadsRunning = threadsRunning--
+                    break
+                }
+
+                while (seekBarisHeld) {
+                    val total = MusicService.musicPlayer.getTrackDuration()
+                    val trackProgress = MusicService.musicPlayer.getTrackProgress()
+
+                    if (total != -1 && trackProgress != -1) {
+                        val (currentMinutesString, currentSecondsString) = getMinutesSecondsString(trackProgress)
+                        val (finalMinutesString, finalSecondsString) = getMinutesSecondsString(total)
+                        val (seekMinutesString, seekSecondsString) = getMinutesSecondsString(seekBar.progress)
+
+                        runOnUiThread {
+                            timeView.text = "$currentMinutesString:$currentSecondsString / $finalMinutesString:$finalSecondsString  Seeking to ( $seekMinutesString:$seekSecondsString )"
+                        }
+                        Thread.sleep(10)
+                    }
+                }
+
+                if (threadsRunning != 0) {
+                    return@Thread
+                }
+
+                val total: Int = MusicService.musicPlayer.getTrackDuration()
+                val trackProgress: Int = MusicService.musicPlayer.getTrackProgress()
+
+                if (total != -1 && trackProgress != -1) {
+                    seekBar.max = total
+                    seekBar.progress = trackProgress
+
+                    val (currentMinutesString, currentSecondsString) = getMinutesSecondsString(trackProgress)
+                    val (finalMinutesString, finalSecondsString) = getMinutesSecondsString(total)
+
+                    runOnUiThread {
+                        timeView.text = "$currentMinutesString:$currentSecondsString / $finalMinutesString:$finalSecondsString"
+                    }
+                }
+
+                Thread.sleep(10)
+            }
+        }
+    }
+
     @SuppressLint("SetTextI18n", "UnspecifiedRegisterReceiverFlag")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -250,63 +308,7 @@ class MainActivity : AppCompatActivity() {
         seekBarisHeld = false
         seekBar.isEnabled = true
 
-        val seekBarThread = Thread {
-            if (threadsRunning != 0) {
-                return@Thread
-            }
-            threadsRunning = threadsRunning++
-            while (true) {
-                if (MusicService.serviceStopped)
-                    return@Thread
-
-                if (!seekBarThreadRunning || MusicService.musicPlayer.isStopped()) {
-                    runOnUiThread {
-                        timeView.text = "00:00 / 00:00"
-                        seekBar.max = 1
-                        seekBar.progress = 0
-                    }
-                    threadsRunning = threadsRunning--
-                    break
-                }
-
-                while (seekBarisHeld) {
-                    val total = MusicService.musicPlayer.getTrackDuration()
-                    val trackProgress = MusicService.musicPlayer.getTrackProgress()
-
-                    if (total != -1 && trackProgress != -1) {
-                        val (currentMinutesString, currentSecondsString) = getMinutesSecondsString(trackProgress)
-                        val (finalMinutesString, finalSecondsString) = getMinutesSecondsString(total)
-                        val (seekMinutesString, seekSecondsString) = getMinutesSecondsString(seekBar.progress)
-
-                        runOnUiThread {
-                            timeView.text = "$currentMinutesString:$currentSecondsString / $finalMinutesString:$finalSecondsString  Seeking to ( $seekMinutesString:$seekSecondsString )"
-                        }
-                        Thread.sleep(10)
-                    }
-                }
-
-                if (threadsRunning != 0) {
-                    return@Thread
-                }
-
-                val total = MusicService.musicPlayer.getTrackDuration()
-                val trackProgress = MusicService.musicPlayer.getTrackProgress()
-
-                if (total != -1 && trackProgress != -1) {
-                    seekBar.max = total
-                    seekBar.progress = trackProgress
-
-                    val (currentMinutesString, currentSecondsString) = getMinutesSecondsString(trackProgress)
-                    val (finalMinutesString, finalSecondsString) = getMinutesSecondsString(total)
-
-                    runOnUiThread {
-                        timeView.text = "$currentMinutesString:$currentSecondsString / $finalMinutesString:$finalSecondsString"
-                    }
-                }
-
-                Thread.sleep(10)
-            }
-        }
+        val seekBarThread = createSeekBarThread()
 
         if (!seekBarThreadRunning) {
             seekBarThreadRunning = true
@@ -348,60 +350,7 @@ class MainActivity : AppCompatActivity() {
         seekBarisHeld = false
         seekBar.isEnabled = true
 
-        val seekBarThread = Thread {
-            if (threadsRunning != 0) {
-                return@Thread
-            }
-            threadsRunning = threadsRunning++
-            while (true) {
-                if (!seekBarThreadRunning || MusicService.musicPlayer.isStopped()) {
-                    runOnUiThread {
-                        timeView.text = "00:00 / 00:00"
-                        seekBar.max = 1
-                        seekBar.progress = 0
-                    }
-                    threadsRunning = threadsRunning--
-                    break
-                }
-
-                while (seekBarisHeld) {
-                    val total = MusicService.musicPlayer.getTrackDuration()
-                    val trackProgress = MusicService.musicPlayer.getTrackProgress()
-
-                    if (total != -1 && trackProgress != -1) {
-                        val (currentMinutesString, currentSecondsString) = getMinutesSecondsString(trackProgress)
-                        val (finalMinutesString, finalSecondsString) = getMinutesSecondsString(total)
-                        val (seekMinutesString, seekSecondsString) = getMinutesSecondsString(seekBar.progress)
-
-                        runOnUiThread {
-                            timeView.text = "$currentMinutesString:$currentSecondsString / $finalMinutesString:$finalSecondsString  Seeking to ( $seekMinutesString:$seekSecondsString )"
-                        }
-                        Thread.sleep(10)
-                    }
-                }
-
-                if (threadsRunning != 0) {
-                    return@Thread
-                }
-
-                val total: Int = MusicService.musicPlayer.getTrackDuration()
-                val trackProgress: Int = MusicService.musicPlayer.getTrackProgress()
-
-                if (total != -1 && trackProgress != -1) {
-                    seekBar.max = total
-                    seekBar.progress = trackProgress
-
-                    val (currentMinutesString, currentSecondsString) = getMinutesSecondsString(trackProgress)
-                    val (finalMinutesString, finalSecondsString) = getMinutesSecondsString(total)
-
-                    runOnUiThread {
-                        timeView.text = "$currentMinutesString:$currentSecondsString / $finalMinutesString:$finalSecondsString"
-                    }
-                }
-
-                Thread.sleep(10)
-            }
-        }
+        val seekBarThread = createSeekBarThread()
 
         if (!seekBarThreadRunning) {
             seekBarThreadRunning = true
