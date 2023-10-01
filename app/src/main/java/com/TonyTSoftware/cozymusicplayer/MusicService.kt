@@ -38,6 +38,7 @@ class MusicService : Service() {
             }
         }
         fun startServiceInput(context: Context, msg: String) {
+            // start service with extra value in intent with label "input"
             try {
                 val startIntent = Intent(context, MusicService::class.java)
                 startIntent.putExtra("input", msg)
@@ -65,6 +66,7 @@ class MusicService : Service() {
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         serviceStopped = false
+        // thread that checks if user is in call every 250 ms
         if (!callThreadRunning) {
             callThreadRunning = true
             val callThread = Thread {
@@ -73,7 +75,7 @@ class MusicService : Service() {
                 while (callThreadRunning) {
                     try {
                         incall = isInCall(this)
-
+                        // if phone state is changed, pause playback on ring/call and resume after call has ended
                         if (incall != prevstate) {
                             if (incall) {
                                 startServiceInput(MainActivity.mainActivityPtr.baseContext, "forcepause")
@@ -106,6 +108,7 @@ class MusicService : Service() {
         }
 
 
+        // code that handles input intents
         when (intent?.getStringExtra("input")) {
             "exit" -> {
                 val mpintent = Intent("MusicServiceIntent")
@@ -159,6 +162,7 @@ class MusicService : Service() {
         )
         val ms = MediaSessionCompat(this, "STAG")
 
+        // bind input intents to notification buttons
         val exitIntent = Intent(this, MusicService::class.java)
         exitIntent.putExtra("input", "exit")
         val eIntent = PendingIntent.getService(this, 1, exitIntent, PendingIntent.FLAG_MUTABLE)
@@ -180,6 +184,9 @@ class MusicService : Service() {
         } else {
             NotificationCompat.Action(R.drawable.ic_media_play, "Play", tIntent)
         }
+
+
+        // create notification
 
         val notification: Notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL)
             .setContentTitle("Cozy Music Player")
@@ -211,7 +218,7 @@ class MusicService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(NOTIFICATION_CHANNEL, "MEDIA PLAYER_CHANNEL",
-                NotificationManager.IMPORTANCE_HIGH)
+                NotificationManager.IMPORTANCE_LOW)
             val manager = getSystemService(NotificationManager::class.java)
             manager!!.createNotificationChannel(serviceChannel)
         }

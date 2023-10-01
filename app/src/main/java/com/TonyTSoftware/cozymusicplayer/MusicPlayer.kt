@@ -4,8 +4,6 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
-import android.util.Log
-import androidx.core.net.toFile
 import androidx.documentfile.provider.DocumentFile
 import kotlin.properties.Delegates
 

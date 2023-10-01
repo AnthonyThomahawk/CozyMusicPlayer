@@ -26,6 +26,7 @@ import kotlin.properties.Delegates
 class MainActivity : AppCompatActivity() {
     private val folderPickRequestCode = 100
     private var audioFilesUri : ArrayList<Uri> = ArrayList()
+    private var foldersAddedUri : ArrayList<Uri> = ArrayList()
     private lateinit var tracksLoadedView : TextView
     private lateinit var playbackBtn : Button
     private lateinit var stopBtn : Button
@@ -49,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         lateinit var mainActivityPtr : MainActivity
         var threadsRunning by Delegates.notNull<Int>()
     }
-
+    // Thread that updates seekbar
     private fun createSeekBarThread() : Thread {
         return Thread {
             if (threadsRunning != 0) {
@@ -112,10 +113,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // number of seekbar threads running
         threadsRunning = 0
 
+        // pointer to main activity context
         mainActivityPtr = this
 
+        // find UI elements by ID
+        val selectFolderBtn : Button = findViewById(R.id.selectfolderbtn)
         currentTrackView = findViewById(R.id.textView3)
         playbackBtn = findViewById(R.id.playbackBtn)
         stopBtn = findViewById(R.id.stopBtn)
@@ -125,6 +130,7 @@ class MainActivity : AppCompatActivity() {
         timeView = findViewById(R.id.timeView)
         autoPlaySwitch = findViewById(R.id.switch1)
         shuffleSwitch = findViewById(R.id.switch2)
+
 
         seekBar.max = 1
         seekBar.progress = 0
@@ -138,17 +144,20 @@ class MainActivity : AppCompatActivity() {
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {
                 if (seekBarThreadRunning) {
-                    seekBarisHeld = true
+                    seekBarisHeld = true // start seeking in track
                 }
             }
 
             override fun onStopTrackingTouch(seekBar: SeekBar) {
                 if (seekBarThreadRunning) {
                     MusicService.musicPlayer.setTrackProgress(seekBar.progress)
-                    seekBarisHeld = false
+                    seekBarisHeld = false // end seeking in track
                 }
             }
         })
+
+        // receiver that handles input from media playback notification
+        // also updates the MainActivity UI when an action happens in notification
 
         val mediaControlsReceiver: BroadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(cont: Context, i: Intent) {
@@ -185,6 +194,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // unregister old receiver from previous context when main activity re-opens
+        // and register new receiver in new context
 
         if (MusicService.mediaReceiverInit) {
             MusicService.oldContext.unregisterReceiver(MusicService.mediaReceiver)
@@ -198,27 +208,27 @@ class MainActivity : AppCompatActivity() {
             registerReceiver(MusicService.mediaReceiver, IntentFilter("MusicServiceIntent"))
         }
 
-        val selectFolderBtn : Button = findViewById(R.id.selectfolderbtn)
-
         tracksLoadedView = findViewById(R.id.textView2)
         tracksLoadedView.text = audioFilesUri.size.toString() + " tracks loaded"
+
+        val settings = getSharedPreferences(PREFS_NAME, 0)
+
+        val retrievedFolders = settings.getStringSet("stringFolders", null)
+
+        // Scan previously accessed folders (if they exist)
+        if (retrievedFolders != null) {
+            for (strFolder in retrievedFolders) {
+                scanFolderUri(strFolder.toUri())
+            }
+            refreshTrackList()
+        }
+
+        // set on click listeners for UI buttons
 
         selectFolderBtn.setOnClickListener {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
             intent.addCategory(Intent.CATEGORY_DEFAULT)
             startActivityForResult(Intent.createChooser(intent, "Choose directory"), folderPickRequestCode);
-        }
-
-        val settings = getSharedPreferences(PREFS_NAME, 0)
-
-
-        val retrievedPaths = settings.getStringSet("stringUris", null)
-
-        if (retrievedPaths != null) {
-            for (strUri in retrievedPaths) {
-                audioFilesUri.add(strUri.toUri())
-            }
-            refreshUI()
         }
 
         playbackBtn.setOnClickListener {
@@ -283,6 +293,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // function to load data from running service, if new instance of MainActivity is opened
     private fun loadDataFromService() {
         if (seekBarThreadRunning) {
             seekBarThreadRunning = false
@@ -357,9 +368,12 @@ class MainActivity : AppCompatActivity() {
             seekBarThread.start()
         }
 
-        MusicService.musicPlayer.play()
-        playbackBtn.text = "Pause"
-        (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_pause)
+        // if autoplay is checked, play track right after selecting it
+        if (autoPlaySwitch.isChecked){
+            MusicService.musicPlayer.play()
+            playbackBtn.text = "Pause"
+            (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_pause)
+        }
     }
 
     @SuppressLint("SetTextI18n")
@@ -394,11 +408,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun nextTrack() {
+        // select next track randomly, if shuffle switch is on
         if (shuffle) {
             currentTrackIndex = (0..<audioFilesUri.size).shuffled().last()
             selectTrack(currentTrackIndex!!)
             return
         }
+        // rollback index to beginning on end, so it is always in valid range
         if (currentTrackIndex != -1) {
             currentTrackIndex = if (currentTrackIndex == audioFilesUri.size - 1)
                 0
@@ -409,6 +425,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun prevTrack() {
+        // rollback index to beginning on end, so it is always in valid range
         if (currentTrackIndex != -1) {
             currentTrackIndex = if (currentTrackIndex == 0)
                 audioFilesUri.size - 1
@@ -419,7 +436,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetTextI18n")
-    private fun refreshUI() {
+    private fun refreshTrackList() {
         trackList = ArrayList()
         for ((index, audioFileUri) in audioFilesUri.withIndex()) {
             try {
@@ -449,6 +466,7 @@ class MainActivity : AppCompatActivity() {
                     if (file.isFile) {
                         val musicFileExtensions = arrayOf("mp3", "ogg", "flac", "m4a", "3gp", "wav")
                         val fileExtension = file.name?.substringAfterLast('.', "")
+                        // avoid duplicate file paths
                         if (fileExtension in musicFileExtensions && file.uri !in audioFilesUri)
                             audioFilesUri.add(file.uri)
                     }
@@ -460,47 +478,52 @@ class MainActivity : AppCompatActivity() {
         if (resultCode == RESULT_OK && requestCode == folderPickRequestCode) {
             val contentResolver = applicationContext.contentResolver
 
+            // request persistent scoped file access for the folder selected by the user
             val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 
             data?.data?.let { contentResolver.takePersistableUriPermission(it, takeFlags) }
 
+            data?.data?.let { foldersAddedUri.add(it) }
 
+            // scan folder for music files
             scanFolderUri(data?.data)
 
+            // save the paths of music folders in app preferences storage
             val settings = getSharedPreferences(PREFS_NAME, 0)
             val editor = settings.edit()
 
-            val retrievedPaths = settings.getStringSet("stringUris", null)
+            val retrievedFolders = settings.getStringSet("stringFolders", null)
 
-            lateinit var stringUriSet : MutableSet<String>
+            lateinit var stringFolderSet : MutableSet<String>
             var startIndex = 0
 
-            if (retrievedPaths != null) {
-                stringUriSet = retrievedPaths
-                editor.remove("stringUris")
+            if (retrievedFolders != null) {
+                stringFolderSet = retrievedFolders
+                editor.remove("stringFolders")
             } else {
-                stringUriSet = mutableSetOf(audioFilesUri[0].toString())
+                stringFolderSet = mutableSetOf(foldersAddedUri[0].toString())
                 startIndex = 1
             }
 
-            for (i in startIndex..<audioFilesUri.size) {
-                val uri = audioFilesUri[i]
+            for (i in startIndex..<foldersAddedUri.size) {
+                val uri = foldersAddedUri[i]
                 val uriStr = uri.toString()
-                if (uriStr !in stringUriSet) {
-                    stringUriSet.add(uriStr)
-                }
+                // avoid duplicate folder paths
+                if (uriStr !in stringFolderSet)
+                    stringFolderSet.add(uriStr)
             }
 
-            editor.putStringSet("stringUris", stringUriSet)
+            editor.putStringSet("stringFolders", stringFolderSet)
 
             editor.commit()
 
-            refreshUI()
+            refreshTrackList()
         }
     }
 
     override fun onDestroy() {
+        // stop seekbar thread when activity is closed by user
         seekBarThreadRunning = false
         super.onDestroy()
     }
