@@ -24,6 +24,7 @@ class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapt
         else
             holder.trackTextView.text = "$title - $artist"
         holder.trackIndex = item.getTrackIndex()
+
         holder.relativeLayout.setOnClickListener {
             MainActivity.mainActivityPtr.selectTrack(holder.trackIndex!!)
         }

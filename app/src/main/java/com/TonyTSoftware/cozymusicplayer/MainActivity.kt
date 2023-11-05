@@ -410,7 +410,10 @@ class MainActivity : AppCompatActivity() {
     fun nextTrack() {
         // select next track randomly, if shuffle switch is on
         if (shuffle) {
+            val oldIndex = currentTrackIndex
             currentTrackIndex = (0..<audioFilesUri.size).shuffled().last()
+            while (oldIndex == currentTrackIndex) // if index rolls on current track, re-shuffle
+                currentTrackIndex = (0..<audioFilesUri.size).shuffled().last()
             selectTrack(currentTrackIndex!!)
             return
         }
@@ -447,7 +450,6 @@ class MainActivity : AppCompatActivity() {
             } catch (e : Exception) {
                 Toast.makeText(this, "Unable to load file, Error : $e", Toast.LENGTH_LONG).show()
             }
-
         }
         val recyclerView : RecyclerView = findViewById(R.id.recyclerView)
         val trackListAdapter = TrackListAdapter(trackList)
@@ -495,18 +497,13 @@ class MainActivity : AppCompatActivity() {
 
             val retrievedFolders = settings.getStringSet("stringFolders", null)
 
-            lateinit var stringFolderSet : MutableSet<String>
-            var startIndex = 0
-
             if (retrievedFolders != null) {
-                stringFolderSet = retrievedFolders
                 editor.remove("stringFolders")
-            } else {
-                stringFolderSet = mutableSetOf(foldersAddedUri[0].toString())
-                startIndex = 1
             }
 
-            for (i in startIndex..<foldersAddedUri.size) {
+            val stringFolderSet : MutableSet<String> = mutableSetOf()
+
+            for (i in 0..<foldersAddedUri.size) {
                 val uri = foldersAddedUri[i]
                 val uriStr = uri.toString()
                 // avoid duplicate folder paths
