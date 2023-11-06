@@ -23,12 +23,7 @@ class MusicPlayer {
     }
 
     fun getCurrentMetaData(context: Context) : Triple<String?,String?, String?> {
-        val metaDataRetriever = MediaMetadataRetriever()
-        metaDataRetriever.setDataSource(context, selectedTrack)
-        val artist : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-        val title : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-        val year : String? = metaDataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)
-        return Triple(title,artist,year)
+        return getMetaData(context, selectedTrack!!)
     }
 
     fun getCurrentFileName(context: Context): String? {
