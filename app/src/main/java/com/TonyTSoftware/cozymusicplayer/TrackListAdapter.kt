@@ -1,4 +1,5 @@
 package com.TonyTSoftware.cozymusicplayer
+import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,6 +9,8 @@ import androidx.recyclerview.widget.RecyclerView
 
 class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapter<TrackListAdapter.ViewHolder>(){
     private var trackList : ArrayList<ListItemData> = trackList
+    private var oldIndex = -1
+    private var currentPos = -1
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val layoutInflater : LayoutInflater = LayoutInflater.from(parent.context)
         val listItem : View = layoutInflater.inflate(R.layout.iteminlist, parent, false)
@@ -15,6 +18,10 @@ class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapt
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        if (position != currentPos) {
+            holder.trackTextView.setTypeface(null, Typeface.NORMAL)
+        }
+
         val item : ListItemData = trackList[position]
         val filename = item.getFileName()
         val title = item.getTrackTitle()
@@ -26,7 +33,13 @@ class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapt
         holder.trackIndex = item.getTrackIndex()
 
         holder.relativeLayout.setOnClickListener {
+            if (currentPos != position) {
+                oldIndex = currentPos
+                currentPos = position
+            }
             MainActivity.mainActivityPtr.selectTrack(holder.trackIndex!!)
+            holder.trackTextView.setTypeface(null, Typeface.BOLD)
+            notifyItemChanged(oldIndex)
         }
     }
 
