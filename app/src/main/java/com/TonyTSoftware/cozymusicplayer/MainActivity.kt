@@ -20,6 +20,8 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
+import java.util.Arrays
+import java.util.Date
 import kotlin.properties.Delegates
 
 
@@ -435,6 +437,60 @@ class MainActivity : AppCompatActivity() {
             else
                 currentTrackIndex!! - 1
             selectTrack(currentTrackIndex!!)
+        }
+    }
+
+    private fun sortByFileName(ascending: Boolean) {
+        if (audioFilesUri.size > 1) {
+            val sorted = audioFilesUri.toTypedArray()
+            Arrays.sort(sorted) { object1, object2 ->
+                val audioFileDoc1: DocumentFile? = DocumentFile.fromSingleUri(baseContext, object1)
+                val audioFileDoc2: DocumentFile? = DocumentFile.fromSingleUri(baseContext, object2)
+
+                val filename1 = audioFileDoc1?.name
+                val filename2 = audioFileDoc2?.name
+
+                if (filename1 != null && filename2 != null) {
+                    if (ascending)
+                        filename1.compareTo(filename2)
+                    else
+                        filename2.compareTo(filename1)
+                } else {
+                    0
+                }
+            }
+
+            audioFilesUri = sorted.toCollection(ArrayList())
+        }
+    }
+
+    private fun sortByDate(ascending: Boolean) {
+        if (audioFilesUri.size > 1) {
+            val sorted = audioFilesUri.toTypedArray()
+            Arrays.sort(sorted) { object1, object2 ->
+                val audioFileDoc1: DocumentFile? = DocumentFile.fromSingleUri(baseContext, object1)
+                val audioFileDoc2: DocumentFile? = DocumentFile.fromSingleUri(baseContext, object2)
+
+                val f1 = Date(audioFileDoc1!!.lastModified())
+                val f2 = Date(audioFileDoc2!!.lastModified())
+
+                if (ascending) {
+                    if (f1.before(f2)) {
+                        f1.time.toInt()
+                    } else {
+                        f2.time.toInt()
+                    }
+                } else {
+                    if (f1.after(f2)) {
+                        f1.time.toInt()
+                    } else {
+                        f2.time.toInt()
+                    }
+                }
+
+            }
+
+            audioFilesUri = sorted.toCollection(ArrayList())
         }
     }
 

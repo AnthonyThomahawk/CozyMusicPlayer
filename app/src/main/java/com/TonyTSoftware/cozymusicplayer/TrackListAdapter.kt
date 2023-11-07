@@ -31,10 +31,11 @@ class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapt
         val filename = item.getFileName()
         val title = item.getTrackTitle()
         val artist = item.getTrackArtist()
-        if (title == null || artist == null)
-            holder.trackTextView.text = filename
-        else
-            holder.trackTextView.text = "$title - $artist"
+        holder.trackTextView.text = filename
+//        if (title == null || artist == null) // temporarily removed
+//            holder.trackTextView.text = filename
+//        else
+//            holder.trackTextView.text = "$artist$ - $title"
         holder.trackIndex = item.getTrackIndex()
 
         holder.relativeLayout.setOnClickListener {
