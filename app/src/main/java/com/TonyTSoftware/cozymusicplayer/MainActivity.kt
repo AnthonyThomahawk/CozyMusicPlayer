@@ -8,8 +8,12 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
+import android.widget.AdapterView
+import android.widget.AdapterView.OnItemSelectedListener
 import android.widget.Button
 import android.widget.SeekBar
+import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
@@ -44,8 +48,6 @@ class MainActivity : AppCompatActivity() {
     private var seekBarisHeld : Boolean = false
     private lateinit var timeView : TextView
     private lateinit var autoPlaySwitch : Switch
-    private lateinit var shuffleSwitch : Switch
-    private var shuffle : Boolean = false
     private val PREFS_NAME = "MUSICPLAYER_SETTINGS"
 
     companion object {
@@ -131,7 +133,6 @@ class MainActivity : AppCompatActivity() {
         seekBar = findViewById(R.id.seekBar)
         timeView = findViewById(R.id.timeView)
         autoPlaySwitch = findViewById(R.id.switch1)
-        shuffleSwitch = findViewById(R.id.switch2)
 
 
         seekBar.max = 1
@@ -277,22 +278,30 @@ class MainActivity : AppCompatActivity() {
             MusicService.musicPlayer.autoPlay = autoPlaySwitch.isChecked
         }
 
-        shuffleSwitch.setOnClickListener {
-            if (shuffleSwitch.isChecked) {
-                MusicService.musicPlayer.autoPlay = true
-                autoPlaySwitch.isEnabled = false
-                autoPlaySwitch.isChecked = true
-                shuffle = true
-            }
-            else {
-                autoPlaySwitch.isEnabled = true
-                shuffle = false
-            }
-        }
-
         if (isMusicServiceRunning()) {
             loadDataFromService()
         }
+
+        val spinner = findViewById<Spinner>(R.id.spinner)
+
+        spinner.onItemSelectedListener =
+            object : OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
+                    stopPlayback()
+                    when (pos) {
+                        0 -> sortByFileName(true)
+                        1 -> sortByFileName(false)
+                        2 -> sortByDate(true)
+                        3 -> sortByDate(false)
+                        4 -> shuffleTrackList()
+                    }
+                    refreshTrackList()
+                }
+
+                override fun onNothingSelected(arg0: AdapterView<*>?) {
+                    // TODO Auto-generated method stub
+                }
+            }
     }
 
     // function to load data from running service, if new instance of MainActivity is opened
@@ -410,15 +419,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun nextTrack() {
-        // select next track randomly, if shuffle switch is on
-        if (shuffle) {
-            val oldIndex = currentTrackIndex
-            currentTrackIndex = (0..<audioFilesUri.size).shuffled().last()
-            while (oldIndex == currentTrackIndex) // if index rolls on current track, re-shuffle
-                currentTrackIndex = (0..<audioFilesUri.size).shuffled().last()
-            selectTrack(currentTrackIndex!!)
-            return
-        }
         // rollback index to beginning on end, so it is always in valid range
         if (currentTrackIndex != -1) {
             currentTrackIndex = if (currentTrackIndex == audioFilesUri.size - 1)
@@ -492,6 +492,10 @@ class MainActivity : AppCompatActivity() {
 
             audioFilesUri = sorted.toCollection(ArrayList())
         }
+    }
+
+    private fun shuffleTrackList() {
+        audioFilesUri = audioFilesUri.shuffled() as ArrayList<Uri>
     }
 
     @SuppressLint("SetTextI18n")
