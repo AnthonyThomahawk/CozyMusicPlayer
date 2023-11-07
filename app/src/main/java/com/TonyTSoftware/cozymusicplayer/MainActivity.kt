@@ -503,9 +503,8 @@ class MainActivity : AppCompatActivity() {
 
             val stringFolderSet : MutableSet<String> = mutableSetOf()
 
-            for (i in 0..<foldersAddedUri.size) {
-                val uri = foldersAddedUri[i]
-                val uriStr = uri.toString()
+            for (folder in foldersAddedUri) {
+                val uriStr = folder.toString()
                 // avoid duplicate folder paths
                 if (uriStr !in stringFolderSet)
                     stringFolderSet.add(uriStr)

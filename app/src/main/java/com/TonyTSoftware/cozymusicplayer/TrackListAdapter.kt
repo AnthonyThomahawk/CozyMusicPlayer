@@ -1,4 +1,5 @@
 package com.TonyTSoftware.cozymusicplayer
+import android.graphics.Paint
 import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
@@ -20,6 +21,10 @@ class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapt
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         if (position != currentPos) {
             holder.trackTextView.setTypeface(null, Typeface.NORMAL)
+            holder.trackTextView.paintFlags = holder.trackTextView.paintFlags and Paint.UNDERLINE_TEXT_FLAG.inv()
+        } else {
+            holder.trackTextView.setTypeface(null, Typeface.BOLD_ITALIC)
+            holder.trackTextView.paintFlags = holder.trackTextView.paintFlags or Paint.UNDERLINE_TEXT_FLAG
         }
 
         val item : ListItemData = trackList[position]
@@ -38,7 +43,8 @@ class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapt
                 currentPos = position
             }
             MainActivity.mainActivityPtr.selectTrack(holder.trackIndex!!)
-            holder.trackTextView.setTypeface(null, Typeface.BOLD)
+            holder.trackTextView.setTypeface(null, Typeface.BOLD_ITALIC)
+            holder.trackTextView.paintFlags = holder.trackTextView.paintFlags or Paint.UNDERLINE_TEXT_FLAG
             notifyItemChanged(oldIndex)
         }
     }
