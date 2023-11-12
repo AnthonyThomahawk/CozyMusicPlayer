@@ -10,8 +10,6 @@ import androidx.recyclerview.widget.RecyclerView
 
 class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapter<TrackListAdapter.ViewHolder>(){
     private var trackList : ArrayList<ListItemData> = trackList
-    private var oldIndex = -1
-    private var currentPos = -1
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val layoutInflater : LayoutInflater = LayoutInflater.from(parent.context)
         val listItem : View = layoutInflater.inflate(R.layout.iteminlist, parent, false)
@@ -19,12 +17,16 @@ class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapt
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        if (position != currentPos) {
+        if (MainActivity.mainActivityPtr.currentTrackIndex == -1) { // stopped
             holder.trackTextView.setTypeface(null, Typeface.NORMAL)
             holder.trackTextView.paintFlags = holder.trackTextView.paintFlags and Paint.UNDERLINE_TEXT_FLAG.inv()
-        } else {
+        }
+        else if (position == MainActivity.mainActivityPtr.currentTrackIndex) { // highlight current track
             holder.trackTextView.setTypeface(null, Typeface.BOLD_ITALIC)
             holder.trackTextView.paintFlags = holder.trackTextView.paintFlags or Paint.UNDERLINE_TEXT_FLAG
+        } else { // un-highlight all other tracks
+            holder.trackTextView.setTypeface(null, Typeface.NORMAL)
+            holder.trackTextView.paintFlags = holder.trackTextView.paintFlags and Paint.UNDERLINE_TEXT_FLAG.inv()
         }
 
         val item : ListItemData = trackList[position]
@@ -39,14 +41,10 @@ class TrackListAdapter(trackList : ArrayList<ListItemData>) : RecyclerView.Adapt
         holder.trackIndex = item.getTrackIndex()
 
         holder.relativeLayout.setOnClickListener {
-            if (currentPos != position) {
-                oldIndex = currentPos
-                currentPos = position
-            }
             MainActivity.mainActivityPtr.selectTrack(holder.trackIndex!!)
             holder.trackTextView.setTypeface(null, Typeface.BOLD_ITALIC)
             holder.trackTextView.paintFlags = holder.trackTextView.paintFlags or Paint.UNDERLINE_TEXT_FLAG
-            notifyItemChanged(oldIndex)
+            notifyDataSetChanged()
         }
     }
 

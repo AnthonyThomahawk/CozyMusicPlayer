@@ -40,7 +40,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nextBtn : Button
     private lateinit var currentTrackView: TextView
     private lateinit var trackList : ArrayList<ListItemData>
-    private var currentTrackIndex : Int? = -1
+    private lateinit var recyclerView : RecyclerView
+    var currentTrackIndex : Int? = -1
+    private var actFirstLaunch = true
 
     private lateinit var seekBar : SeekBar
 
@@ -214,17 +216,24 @@ class MainActivity : AppCompatActivity() {
         tracksLoadedView = findViewById(R.id.textView2)
         tracksLoadedView.text = audioFilesUri.size.toString() + " tracks loaded"
 
-        val settings = getSharedPreferences(PREFS_NAME, 0)
 
-        val retrievedFolders = settings.getStringSet("stringFolders", null)
-
-        // Scan previously accessed folders (if they exist)
-        if (retrievedFolders != null) {
-            for (strFolder in retrievedFolders) {
-                scanFolderUri(strFolder.toUri())
-            }
+        if (MusicService.audioFilesUriCopy != null) {
+            audioFilesUri = ArrayList(MusicService.audioFilesUriCopy!!)
             refreshTrackList()
+        } else {
+            val settings = getSharedPreferences(PREFS_NAME, 0)
+
+            val retrievedFolders = settings.getStringSet("stringFolders", null)
+
+            // Scan previously accessed folders (if they exist)
+            if (retrievedFolders != null) {
+                for (strFolder in retrievedFolders) {
+                    scanFolderUri(strFolder.toUri())
+                }
+                refreshTrackList()
+            }
         }
+
 
         // set on click listeners for UI buttons
 
@@ -287,6 +296,10 @@ class MainActivity : AppCompatActivity() {
         spinner.onItemSelectedListener =
             object : OnItemSelectedListener {
                 override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
+                    if (actFirstLaunch) {
+                        actFirstLaunch = false
+                        return
+                    }
                     stopPlayback()
                     when (pos) {
                         0 -> sortByFileName(true)
@@ -362,6 +375,7 @@ class MainActivity : AppCompatActivity() {
         currentTrackIndex = trackIndex
         MusicService.trackIndex = trackIndex
         MusicService.musicPlayer.changeTrack(this, audioFilesUri[trackIndex])
+        recyclerView.adapter?.notifyDataSetChanged()
         val (title, artist) = MusicService.musicPlayer.getMetaData(this, audioFilesUri[trackIndex])
         if (title == null || artist == null)
             currentTrackView.text = trackList[trackIndex].getFileName() + "\n" + "No metadata"
@@ -399,6 +413,7 @@ class MainActivity : AppCompatActivity() {
             currentTrackView.text = "No track selected"
             currentTrackIndex = -1
             MusicService.trackIndex = -1
+            recyclerView.adapter?.notifyDataSetChanged()
             playbackBtn.text = "Play"
             (playbackBtn as MaterialButton).icon = ContextCompat.getDrawable(this, android.R.drawable.ic_media_play)
         }
@@ -511,7 +526,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Unable to load file, Error : $e", Toast.LENGTH_LONG).show()
             }
         }
-        val recyclerView : RecyclerView = findViewById(R.id.recyclerView)
+        recyclerView = findViewById(R.id.recyclerView)
         val trackListAdapter = TrackListAdapter(trackList)
         recyclerView.setHasFixedSize(true)
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -578,9 +593,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+
+    }
+
     override fun onDestroy() {
         // stop seekbar thread when activity is closed by user
         seekBarThreadRunning = false
+        MusicService.audioFilesUriCopy = ArrayList(audioFilesUri)
         super.onDestroy()
     }
 

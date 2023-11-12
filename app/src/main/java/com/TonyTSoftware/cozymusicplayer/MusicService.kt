@@ -10,6 +10,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.provider.MediaStore.Audio
@@ -23,6 +24,7 @@ import androidx.media.app.NotificationCompat as MediaNotificationCompat
 class MusicService : Service() {
     private val NOTIFICATION_CHANNEL = "MEDIAPLAYER_CHANNEL"
     companion object {
+        var audioFilesUriCopy : ArrayList<Uri>? = null
         val musicPlayer = MusicPlayer()
         lateinit var mediaReceiver : BroadcastReceiver
         lateinit var oldContext: Context
