@@ -31,6 +31,6 @@ This app is fully open source, and **does not require ANY runtime android permis
 All functions described above are working and tested on Android 6-14 without any runtime permissions.
 
 # User interface preview
-![Image1](2023-11-25_01-58.png)
-![Image2](2023-11-25_01-59.png)
-![Image3](2023-11-25_01-59_1.png)
+![Image1](2023-11-25_01-58.png) <br><br>
+![Image2](2023-11-25_01-59.png) <br><br>
+![Image3](2023-11-25_01-59_1.png) <br><br>
