@@ -4,11 +4,10 @@ This is a FOSS music player for Android, written in Kotlin.<br>
 
 # Installation
 To install this app, head over to the "Releases" tab of this Github repository and download the APK file. <br>
-It is not yet available on the Play store, it will be after some more features are added. <br>
-To install APK files, you must enable unknown sources for your browser in your device settings <br>
-**Important note** When installing, you must accept the Play Protect dialog to install (because the APK file in this repo uses an unsigned certificate)
+To install APK files, you must enable unknown sources for your browser in your device settings. <br>
+**Important note :** When installing, you must accept the Play Protect dialog to install (because the APK file in this repo uses an unsigned certificate).
 
-# Compatibility
+# Compatibility and device testing
 The app requires a device with Android 5.0 or newer.<br>
 All features have been tested on these Devices and are working :
 - Android 6 (Xperia Z2)
@@ -25,7 +24,13 @@ All features have been tested on these Devices and are working :
 - Automatic pausing of music playback when a phone call is placed (works when receiving AND placing a call and also works without requiring phone permission.)
 - Sorting of music list by Name or File date (descending or ascending)
 - Shuffle track list
+- Light theme and Dark theme (Automatically set according to your device theme)
 
 # Another note
 This app is fully open source, and **does not require ANY runtime android permissions**, respecting your privacy.<br>
 All functions described above are working and tested on Android 6-14 without any runtime permissions.
+
+# User interface preview
+![Image1](2023-11-25_01-58.png)
+![Image2](2023-11-25_01-59.png)
+![Image3](2023-11-25_01-59_1.png)
